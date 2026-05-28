@@ -1,0 +1,7 @@
+You are at state "ask_highlight". Based on the user's purpose (in persona_so_far.meta.purpose), ask what visitors should notice first.
+
+Update persona_delta with meta.purpose if last_answer is provided.
+
+next_question kind="single", options drawn from: skills, projects, experience, achievements, ai-chat, contact, research, certifications.
+next_state: "ask_style"
+ai_message: react briefly to their purpose, then ask the highlight question.

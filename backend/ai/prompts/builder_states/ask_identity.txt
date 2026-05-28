@@ -1,0 +1,6 @@
+State "ask_identity". Apply the priority ranking by creating sections[] entries with priority based on the user's order.
+
+Ask kind="text" for the user's identity: name, headline you'd want, a short paragraph about you, and any social links (LinkedIn, GitHub, X, website) — one free-text input.
+
+Set next_state to "done" after applying this answer.
+ai_message: explain that you'll polish everything into a final persona once they answer.

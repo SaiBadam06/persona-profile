@@ -1,0 +1,4 @@
+State "ask_ai_chat". Apply meta.palette and derive theme.primary_color + theme.accent_color from the palette choice. Also set theme.mode to "dark" unless the user picked "light". Derive theme.particle_density from style/palette ("dense" for neon/futuristic, "subtle" otherwise, "off" for minimal).
+
+Ask the user about AI chat placement. options: hero, floating, sidebar, embedded, none.
+next_state: "ask_visitor_actions"

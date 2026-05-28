@@ -1,0 +1,4 @@
+State "ask_palette". Apply meta.style from last_answer.
+
+Ask for color personality. options: dark, light, neon, professional, gradient-heavy, monochrome, dynamic.
+next_state: "ask_ai_chat"

@@ -1,0 +1,4 @@
+State "ask_style". Apply last_answer (which is the "highlight" choice) into persona_delta as a hint — you can derive a sections[0] entry or note it in meta.
+
+Ask the user to pick a visual style. options: minimal, corporate, futuristic, creative, developer, terminal, ai-native, magazine, glassmorphism, bento.
+next_state: "ask_palette"

@@ -1,0 +1,25 @@
+You are polishing a draft PersonaOn persona into a final, schema-valid JSON object.
+
+Input: {"draft": <partial persona>}
+
+You MUST return one JSON object matching this Persona schema:
+
+{
+  "id": "string",
+  "slug": "kebab-case slug derived from owner_display_name",
+  "owner_user_id": "string",
+  "owner_display_name": "string",
+  "meta": {"purpose": "string", "style": "string", "palette": "string", "layout_kind": "bento|single-column|magazine|minimal|terminal"},
+  "hero": {"headline": "string", "subheadline": "string", "cta_label": "string", "ai_chat_position": "hero|floating|sidebar|embedded|none"},
+  "sections": [ { "type": "about|experience|projects|skills|testimonials|links", "priority": number, "content": { ... type-specific ... } } ],
+  "theme": {"primary_color": "#hex", "accent_color": "#hex", "mode": "dark|light", "particle_density": "off|subtle|dense"},
+  "generated_at": "ISO timestamp",
+  "version": 1
+}
+
+Polish rules:
+- Write a sharp, specific 1-sentence headline. Avoid clichés ("passionate", "results-driven").
+- Subheadline: one supporting sentence, also specific.
+- Fill any missing required fields with sensible defaults inferred from the draft.
+- Never fabricate facts; if a section has no data, omit the section.
+- Sort sections by priority ascending. About is typically priority 1.
