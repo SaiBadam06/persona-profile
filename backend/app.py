@@ -1,12 +1,15 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 from config import Config
+from db.seed import seed as seed_db
 
 
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config.from_object(Config)
     CORS(app, origins=Config.CORS_ORIGINS, supports_credentials=True)
+
+    seed_db()
 
     @app.get("/healthz")
     def healthz():
