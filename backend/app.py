@@ -11,6 +11,9 @@ def create_app() -> Flask:
 
     seed_db()
 
+    from routes.persona import bp as persona_bp
+    app.register_blueprint(persona_bp)
+
     @app.get("/healthz")
     def healthz():
         return jsonify(status="ok"), 200
