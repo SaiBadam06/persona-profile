@@ -12,7 +12,12 @@ def create_app() -> Flask:
     seed_db()
 
     from routes.persona import bp as persona_bp
+    from routes.builder import bp as builder_bp
+    from routes.chat import bp as chat_bp
+
     app.register_blueprint(persona_bp)
+    app.register_blueprint(builder_bp)
+    app.register_blueprint(chat_bp)
 
     @app.get("/healthz")
     def healthz():
