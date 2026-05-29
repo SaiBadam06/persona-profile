@@ -283,7 +283,7 @@ function PublishStep({
               showEdit ? "border-primary bg-accent text-primary" : "border-border bg-card hover:bg-accent"
             )}
           >
-            <Pencil className="size-4" /> Edit content
+            <Pencil className="size-4" /> Edit fields
           </button>
           <button
             onClick={onRegenerate}
@@ -302,35 +302,42 @@ function PublishStep({
       </div>
 
       {published && (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[color:var(--success)]/30 bg-[color:oklch(0.97_0.04_150)] p-3 text-sm">
-          <CheckCircle2 className="size-5 text-[color:var(--success)]" />
-          <span className="font-medium">Live at</span>
-          <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="font-mono text-primary hover:underline">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-[color:var(--success)]/30 bg-[color:oklch(0.97_0.04_150)] p-3 text-sm">
+          <span className="flex items-center gap-2">
+            <CheckCircle2 className="size-5 shrink-0 text-[color:var(--success)]" />
+            <span className="font-medium">Live at</span>
+          </span>
+          <a
+            href={publicUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="min-w-0 flex-1 break-all font-mono text-primary hover:underline"
+          >
             {publicUrl.replace(/^https?:\/\//, "")}
           </a>
           <a
             href={publicUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg bg-card px-3 text-xs font-medium ring-1 ring-border hover:bg-accent"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg bg-card px-3 text-xs font-medium ring-1 ring-border hover:bg-accent"
           >
             <ExternalLink className="size-3.5" /> Open
           </a>
         </div>
       )}
 
+      {/* AI editor is always available on the publish page */}
+      <AiEditPanel profile={result.profile} onChange={onProfileChange} />
+
       {showEdit && (
-        <>
-          <AiEditPanel profile={result.profile} onChange={onProfileChange} />
-          <section className="panel rounded-2xl p-5">
-            <div className="mb-4 flex items-center gap-2">
-              <Pencil className="size-4 text-primary" />
-              <h3 className="text-sm font-semibold">Edit content manually</h3>
-              <span className="ml-auto text-xs text-muted-foreground">Changes preview live below</span>
-            </div>
-            <ProfileContentEditor profile={result.profile} onChange={onProfileChange} />
-          </section>
-        </>
+        <section className="panel rounded-2xl p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <Pencil className="size-4 text-primary" />
+            <h3 className="text-sm font-semibold">Edit content manually</h3>
+            <span className="ml-auto text-xs text-muted-foreground">Changes preview live below</span>
+          </div>
+          <ProfileContentEditor profile={result.profile} onChange={onProfileChange} />
+        </section>
       )}
 
       <ProfilePreview profile={result.profile} facts={facts} url={publicUrl} />

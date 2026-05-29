@@ -37,10 +37,11 @@ const FONTS = {
 const DENSITY = { airy: { pad: 64, gap: 28 }, balanced: { pad: 44, gap: 20 }, compact: { pad: 28, gap: 14 } } as const;
 const RADIUS = { sharp: 0, soft: 12, round: 22 } as const;
 
-// Bento column spans (of a 6-col grid) — gives irregular, varied box sizes.
+// Bento column spans (of a 6-col grid). Tuned to pair into full rows so dense
+// auto-flow tiles tightly with minimal empty space.
 const SPAN: Record<string, number> = {
-  about: 4, stats: 2, skills: 2, experience: 6, projects: 4,
-  services: 2, testimonials: 3, faq: 3, quote: 6, chat: 4, contact: 2,
+  about: 4, stats: 2, skills: 2, services: 4, experience: 6,
+  projects: 6, testimonials: 3, faq: 3, quote: 6, chat: 4, contact: 2,
 };
 
 export function AiLayout({ profile, facts, device }: ThemeProps) {
@@ -85,15 +86,19 @@ export function AiLayout({ profile, facts, device }: ThemeProps) {
         style={{
           gridColumn: mobile ? "span 1" : `span ${span ?? 6}`,
           background: c.surface,
-          border: `1px solid ${c.ink}14`,
+          border: `1px solid ${c.ink}12`,
           borderRadius: radius,
           padding: mobile ? 16 : 22,
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "0 1px 2px rgba(15,23,42,.04), 0 12px 28px -22px rgba(15,23,42,.25)",
         }}
       >
         {heading && (
           <h2 style={{ ...headingStyle, fontSize: mobile ? 17 : 20, marginBottom: 12 }}>{heading}</h2>
         )}
-        {children}
+        <div style={{ flex: 1 }}>{children}</div>
       </section>
     );
   }
@@ -351,7 +356,7 @@ export function AiLayout({ profile, facts, device }: ThemeProps) {
           gridAutoFlow: "dense",
           gap: d.gap,
           padding: `${d.gap}px ${sectionPad}px ${d.gap + 14}px`,
-          alignItems: "start",
+          alignItems: "stretch",
         }}
       >
         {bentoBlocks.map((b, i) => renderBlock(b, i))}

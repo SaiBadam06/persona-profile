@@ -252,7 +252,7 @@ export function generateProfileWithGroqMock(input: GenerateInput): GeneratedProf
     },
     booking: {
       enabled: answers.bookingCta,
-      label: "Book a 20-min intro call",
+      label: "Schedule a meet",
       note: "Free, no-pressure call to see if we're a fit.",
     },
     contact: { email, socials: facts.socialLinks },

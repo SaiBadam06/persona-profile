@@ -152,7 +152,7 @@ export function generateProfileWithGroqMock(input: GenerateInput): GeneratedProf
       collectLeads: answers.chatCollectLeads,
       greeting: `Hi! I'm ${facts.name.split(" ")[0]}'s AI. Ask me anything about ${facts.name.split(" ")[0]}'s work, experience, or how to work together.`,
     },
-    booking: { enabled: answers.bookingCta, label: "Book a 20-min intro call", note: "Free, no-pressure call to see if we're a fit." },
+    booking: { enabled: answers.bookingCta, label: "Schedule a meet", note: "Free, no-pressure call to see if we're a fit." },
     contact: { email, socials: facts.socialLinks },
     generatedBy: "mock",
     model: "generateProfileWithGroqMock",
