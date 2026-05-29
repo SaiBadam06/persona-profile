@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { answerQuestion } from "@/lib/chat-sim";
+import { API_BASE } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import type {
   ChatMessage,
@@ -56,30 +57,37 @@ export function PublicChatPreview({ profile, facts, className }: Props) {
     });
   }, [messages, thinking]);
 
-  function ask(question: string) {
+  async function ask(question: string) {
     if (!question.trim() || thinking) return;
     setInput("");
     setMessages((m) => [...m, { id: newMsg(), role: "user", text: question }]);
     setThinking(true);
 
-    setTimeout(() => {
-      const { text, sources } = answerQuestion(question, facts, profile);
-      const nextAnswered = answered + 1;
-      const offerLead =
-        profile.chat.collectLeads && !leadDone && nextAnswered >= 1;
-      setAnswered(nextAnswered);
-      setMessages((m) => [
-        ...m,
-        {
-          id: newMsg(),
-          role: "assistant",
-          text,
-          sources,
-          offerLeadCapture: offerLead,
-        },
-      ]);
-      setThinking(false);
-    }, 800);
+    // Real AI answer grounded in the profile; fall back to the local sim.
+    let reply: { text: string; sources?: ChatSource[] } | null = null;
+    try {
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile, facts, question }),
+      });
+      const data = await res.json();
+      if (res.ok && data.source === "groq" && data.text) {
+        reply = { text: data.text, sources: data.sources ?? [] };
+      }
+    } catch {
+      /* offline / no key — use local fallback */
+    }
+    if (!reply) reply = answerQuestion(question, facts, profile);
+
+    const nextAnswered = answered + 1;
+    const offerLead = profile.chat.collectLeads && !leadDone && nextAnswered >= 1;
+    setAnswered(nextAnswered);
+    setMessages((m) => [
+      ...m,
+      { id: newMsg(), role: "assistant", text: reply.text, sources: reply.sources, offerLeadCapture: offerLead },
+    ]);
+    setThinking(false);
   }
 
   return (
