@@ -6,28 +6,39 @@ Status: Approved (pending spec review)
 ## Goal
 
 Add an AI-driven **publish flow** to the existing PersonaOn prototype: a busy
-professional (founder, CEO, recruiter) gives their **GitHub** (and optionally a
-resume/LinkedIn link as extra context), answers a tiny gap-filling Q&A, and the
-AI generates a complete, customized public persona page. The user optionally
-refines it (AI prompt edits + manual edits), and on an explicit **Publish** click
-it becomes a publicly shareable link (`/p/<slug>`). Every published page includes
-the existing "Chat with \<name\>" widget that answers as the link owner.
+professional (founder, CEO, recruiter) uploads their **resume** and/or
+**LinkedIn profile PDF**, answers a tiny gap-filling Q&A, and the AI generates a
+complete, customized public persona page. The user optionally refines it (AI
+prompt edits + manual edits), and on an explicit **Publish** click it becomes a
+publicly shareable link (`/p/<slug>`). Every published page includes the existing
+"Chat with \<name\>" widget that answers as the link owner.
 
 **North-star constraint: minimal effort.** Target users are time-poor. The
-default path is *enter GitHub → answer 2-3 quick questions → AI builds everything
-→ one click to publish*. The AI owns customization (layout, focus, theme,
-section ordering). All manual refinement is optional and never blocks publishing.
+default path is *upload resume/LinkedIn PDF → answer 2-3 quick questions → AI
+builds everything → one click to publish*. The AI owns customization (layout,
+focus, theme, section ordering). All manual refinement is optional and never
+blocks publishing.
+
+### Input reality (important)
+
+- **Resume** and **LinkedIn** are the primary inputs, taken as **uploaded
+  documents** (PDF or pasted text). Server-side text extraction feeds the AI.
+- LinkedIn is supplied as the user's own **"Save to PDF" profile export**
+  (LinkedIn → More → Save to PDF), *not* a profile URL: LinkedIn has no public
+  API and scraping a live profile requires login and violates its ToS, so we do
+  not fetch `linkedin.com/in/...` URLs.
+- **GitHub** is an optional secondary enrichment (public API), not required.
 
 ## Scope
 
 In scope:
-- **GitHub auto-ingestion** via the public GitHub REST API (profile + top repos →
-  about/skills/projects), no login required.
-- Optional extra context: pasted resume text and/or a LinkedIn/personal URL,
-  used by the AI as free-text hints.
+- **Document ingestion** of resume + LinkedIn-export PDFs (and/or pasted text):
+  server-side text extraction → AI synthesizes about/skills/projects/experience.
 - A short **gap-filling Q&A** (2-3 questions: audience, role framing, one
   highlight) with AI-suggested defaults.
-- One-shot AI generation of a complete draft persona from the above.
+- One-shot AI generation of a complete draft persona from documents + Q&A.
+- Optional **GitHub** enrichment via the public GitHub REST API (top repos →
+  projects/skills), no login required.
 - Draft → review/edit → publish lifecycle with a publish gate.
 - Two render/navigation modes (AI-chosen, user-overridable): single-page
   (anchor-scroll nav) and multi-page (tab-switched section views, one URL).
@@ -36,9 +47,10 @@ In scope:
 
 Out of scope (prototype):
 - Real authentication/accounts (keep the existing `X-User-Id` localStorage UUID).
-- **Scraping LinkedIn or parsing PDF resumes.** LinkedIn has no clean public API
-  and scraping violates its ToS; a LinkedIn/resume input is treated as optional
-  pasted text/URL context only, never fetched or scraped.
+- **Fetching/scraping live LinkedIn profile URLs.** No public API; requires login;
+  violates ToS. LinkedIn data comes only from the user's own uploaded PDF export.
+- OCR of scanned/image-only PDFs (we extract embedded text; image-only PDFs fall
+  back to Q&A/paste — see Error handling).
 - GitHub authentication beyond an optional server-side token for rate limits.
 - Custom domains, analytics, SEO tuning.
 
@@ -72,31 +84,36 @@ white/black monochrome theme (Gabarito headings, pastel particles).
 
 Existing fields (`hero`, `sections`, `theme`, etc.) unchanged.
 
-### Ingestion: GitHub (+ optional context)
+### Ingestion: documents (resume + LinkedIn) [+ optional GitHub]
 
-New backend module `ai/ingest_github.py` (or `services/github.py`):
-- Input: a GitHub username or profile URL (parse `github.com/<user>` → `<user>`).
-- Fetches via public GitHub REST API (`https://api.github.com`):
-  - `GET /users/<user>` → name, bio, company, location, blog, public_repos,
-    followers, avatar_url.
-  - `GET /users/<user>/repos?sort=stars&per_page=100` (client-side sort if
-    needed) → top non-fork repos: name, description, html_url, language,
-    stargazers_count, topics.
-- Derives a structured summary: candidate **projects** (top repos by stars),
-  **skills** (languages + topics, de-duplicated), **about** hints (bio/company).
-- Auth: unauthenticated by default (60 req/hr). If `GITHUB_TOKEN` env is set,
-  send it to raise the limit. Never required.
-- Returns a normalized dict the generator passes to Groq. On failure (see Error
-  handling) returns `null` and the flow degrades to Q&A/paste-only.
+New backend module `ai/ingest_docs.py`:
+- Input: one or more uploaded files (resume PDF, LinkedIn-export PDF) and/or
+  pasted text.
+- PDF text extraction via **`pypdf`** (add to `requirements.txt`). `.txt` and
+  pasted text pass through directly.
+- Normalizes/concatenates extracted text into a single labeled context blob
+  (e.g. `--- RESUME ---\n…\n--- LINKEDIN ---\n…`), truncated to a safe token
+  budget before being sent to Groq.
+- Returns `{ text, sources: [...] }`, or empty text if nothing extractable
+  (→ Error-handling fallback).
+
+Optional `ai/ingest_github.py` (secondary, unchanged behavior):
+- Input: a GitHub username/URL. Public GitHub REST API → top non-fork repos
+  (projects) + languages/topics (skills) + bio (about). Unauthenticated (60/hr);
+  honors `GITHUB_TOKEN` if set. Returns `null` on failure (non-fatal).
 
 ### Backend endpoints (Flask + Groq)
 
-- `POST /api/personas/generate` (SSE) — **fast path.** Body:
-  `{ github (username or url), links? (resume/linkedin text or url), qa? (audience,
-  role framing, highlight) }`. Server ingests GitHub, then streams generation and
-  returns a complete **draft** persona (`published=false`) with AI-inferred
-  `nav_mode`, `primary_focus`, sections, theme. Owner = `X-User-Id`. GitHub-derived
-  projects/skills seed the relevant sections; the AI writes copy and chooses layout.
+- `POST /api/personas/generate` (SSE, **`multipart/form-data`**) — **fast path.**
+  Fields: `resume` (file, optional), `linkedin` (file, optional),
+  `extra_text` (string, optional paste), `github` (string, optional),
+  `qa` (JSON string: audience, role framing, highlight). Server extracts document
+  text (+ optional GitHub), then streams generation and returns a complete
+  **draft** persona (`published=false`) with AI-inferred `nav_mode`,
+  `primary_focus`, sections, theme. Owner = `X-User-Id`. Document-derived
+  experience/skills/projects seed the relevant sections; the AI writes copy and
+  chooses layout. (Flask reads `request.files`, then returns a streaming SSE
+  response.)
 - `POST /api/builder/turn` (SSE) — existing guided wizard, retained as optional
   mode; on `final` it now saves a **draft** (not auto-published) and routes to
   review instead of to the public link.
@@ -118,12 +135,14 @@ All write/edit/publish endpoints require `X-User-Id == owner_user_id` (403 other
 
 - **Entry CTA** ("Create your persona" / "Publish") → `/build`.
 - **`/build` (fast intake, default):** one screen —
-  1. A **GitHub username/URL** field (primary input).
-  2. Optional: paste resume text or a LinkedIn/personal URL ("add more context").
+  1. **Upload your resume** (PDF/.txt) and/or **LinkedIn profile PDF**
+     (drag-drop or file picker). Inline hint: "LinkedIn → More → Save to PDF".
+  2. Optional: paste extra text, or add a GitHub username for enrichment.
   3. A short Q&A (2-3 questions: who's the audience, how to frame your role, one
      thing to highlight) shown as chips with AI-friendly defaults, all skippable.
-  4. An always-enabled **Generate** button → `/api/personas/generate`.
-  Live progress while streaming (e.g. "Reading GitHub… Writing your page…").
+  4. An always-enabled **Generate** button → `/api/personas/generate`
+     (`multipart/form-data`).
+  Live progress while streaming (e.g. "Reading your resume… Writing your page…").
 - **Review screen** (`/p/<slug>/edit`, owner-only — the draft already has a slug):
   split view —
   - Left: live `PersonaPage` preview in the persona's `nav_mode`, with
@@ -146,9 +165,10 @@ All write/edit/publish endpoints require `X-User-Id == owner_user_id` (403 other
 ## Data flow
 
 1. CTA → `/build`.
-2. User enters GitHub (+ optional context / quick Q&A), hits **Generate**.
-3. `POST /generate` → server ingests GitHub → Groq synthesizes → draft persona
-   saved (`published=false`) → redirect to review (`/p/<slug>/edit`).
+2. User uploads resume/LinkedIn PDF (+ optional GitHub / quick Q&A), hits **Generate**.
+3. `POST /generate` → server extracts document text (+ optional GitHub) → Groq
+   synthesizes → draft persona saved (`published=false`) → redirect to review
+   (`/p/<slug>/edit`).
 4. Review: optional AI prompt edits (`/edit`) and inline manual edits (`PATCH`);
    preview updates live. Publishing is available at any time.
 5. **Publish** (`/publish`) → `published=true` → shareable link shown.
@@ -164,21 +184,31 @@ All write/edit/publish endpoints require `X-User-Id == owner_user_id` (403 other
 - Visiting an unpublished slug as a non-owner: `404` (page "not found / not public").
 - Empty intake: Generate is allowed but AI is prompted to produce a tasteful
   placeholder draft the user can edit.
-- **GitHub fetch failures:** invalid/nonexistent username (`404`), rate limit
-  (`403`/`429`), or network error → stream a non-fatal `notice` event and continue
-  generation from Q&A/paste context only (never hard-fail the publish flow).
-- GitHub user with no/empty public repos: skip the projects/skills seeding and let
-  the AI build from bio + Q&A.
+- **PDF with no extractable text** (scanned/image-only) or extraction error:
+  stream a non-fatal `notice` ("couldn't read that file — add text or answer a few
+  questions") and continue from any other context + Q&A. Never hard-fail.
+- **File validation:** reject non-PDF/.txt or oversized uploads (e.g. > 8 MB) with
+  a clear `error`; the user can re-pick.
+- **GitHub fetch failures** (optional path): invalid username (`404`), rate limit
+  (`403`/`429`), or network error → non-fatal `notice`, continue without it.
+
+## New dependencies
+
+- Backend: `pypdf` (PDF text extraction) added to `backend/requirements.txt`.
+  `requests` (or `httpx`) for the optional GitHub call if not already present.
+- Frontend: none new (native file input / drag-drop; existing fetch + SSE).
 
 ## Testing
 
 Backend (pytest):
-- GitHub ingestion: parses username from URL; maps mocked API responses to
-  projects/skills/about; handles `404`/rate-limit/no-repos by returning `null`
-  without raising.
+- Document ingestion: extracts text from a sample PDF and a `.txt`; returns empty
+  text for an image-only/invalid PDF without raising; rejects oversized/wrong-type
+  files.
+- Optional GitHub ingestion (mocked, no live network): maps responses to
+  projects/skills; `404`/rate-limit → `null` without raising.
 - `generate` returns a schema-valid draft with `published=false` and AI-set
-  `nav_mode`/`primary_focus`; works both with GitHub data and in the GitHub-failed
-  (Q&A-only) fallback (GitHub API mocked in tests — no live network).
+  `nav_mode`/`primary_focus`; works with document text and in the no-document
+  (Q&A-only) fallback.
 - `edit` applies an instruction and returns schema-valid JSON; invalid model
   output leaves the persona unchanged.
 - `PATCH` updates only provided fields; rejects non-owner.
