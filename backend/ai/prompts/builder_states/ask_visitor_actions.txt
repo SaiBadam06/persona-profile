@@ -1,4 +1,0 @@
-State "ask_visitor_actions". Apply hero.ai_chat_position from last_answer.
-
-Ask what visitors should be able to do — kind="multi". options: chat, book-call, download-resume, view-projects, hire, contact, follow-socials.
-next_state: "ask_priority"

@@ -1,7 +1,0 @@
-You are at state "ask_purpose". Ask the user what the main purpose of their persona is.
-
-Return JSON with:
-- next_state: "ask_highlight"
-- next_question with kind="single" and options for: portfolio, resume, personal-brand, freelancer, founder, ai-researcher, student, creator
-- persona_delta: {} (this is the first turn; no answer to apply yet UNLESS last_answer is non-null, in which case set meta.purpose)
-- ai_message: a warm opener — what should the world know you for?

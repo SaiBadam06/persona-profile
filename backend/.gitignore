@@ -1,6 +1,5 @@
-.venv/
-__pycache__/
-*.pyc
+node_modules/
+dist/
 .env
-*.db
-.pytest_cache/
+*.log
+backend/gen-payload.json

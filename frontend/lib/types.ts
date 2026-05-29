@@ -1,69 +1,282 @@
-export type ExperienceItem = {
-  role: string;
-  organization: string;
-  start: string;
-  end?: string | null;
-  summary?: string;
-};
+// ---------------------------------------------------------------------------
+// PersonaOn — shared prototype types
+// ---------------------------------------------------------------------------
 
-export type ProjectItem = {
-  title: string;
-  description: string;
-  tags?: string[];
-  url?: string;
-};
+export type SourceKind = "linkedin" | "resume" | "website" | "manual";
+export type SourceStatus = "waiting" | "extracting" | "complete" | "failed";
 
-export type SkillGroup = {
+/** Raw user-provided intake values. */
+export interface SourceInput {
+  linkedinUrl: string;
+  resumeFileName: string;
+  websiteUrl: string;
+  manualBio: string;
+}
+
+/** A source card shown during intake / extraction. */
+export interface SourceCard {
+  id: string;
+  kind: SourceKind;
   label: string;
-  items: string[];
-};
+  value: string;
+  status: SourceStatus;
+  detail: string;
+}
 
-export type Testimonial = {
-  quote: string;
-  author: string;
-  role?: string;
-};
+// --- Extracted facts (each list item is individually editable / removable) ---
 
-export type LinkItem = {
+export interface SkillItem {
+  id: string;
+  label: string;
+}
+
+export interface WorkItem {
+  id: string;
+  role: string;
+  company: string;
+  period: string;
+  summary: string;
+}
+
+export interface ProjectItem {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+}
+
+export interface AchievementItem {
+  id: string;
+  text: string;
+}
+
+export interface ServiceItem {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export type SocialKind = "linkedin" | "github" | "x" | "website" | "email" | "other";
+
+export interface SocialLink {
+  id: string;
+  kind: SocialKind;
   label: string;
   url: string;
-  icon?: "github" | "linkedin" | "x" | "website" | "email";
-};
+}
 
-export type Section =
-  | { type: "about"; priority: number; content: { body: string } }
-  | { type: "experience"; priority: number; content: { items: ExperienceItem[] } }
-  | { type: "projects"; priority: number; content: { items: ProjectItem[] } }
-  | { type: "skills"; priority: number; content: { groups: SkillGroup[] } }
-  | { type: "testimonials"; priority: number; content: { items: Testimonial[] } }
-  | { type: "links"; priority: number; content: { items: LinkItem[] } };
+export interface ExtractedFacts {
+  name: string;
+  headline: string;
+  role: string;
+  location: string;
+  skills: SkillItem[];
+  workHistory: WorkItem[];
+  projects: ProjectItem[];
+  achievements: AchievementItem[];
+  services: ServiceItem[];
+  socialLinks: SocialLink[];
+}
 
-export type SectionType = Section["type"];
+// --- Customization answers ---
 
-export type Persona = {
+export type LayoutKind = "single" | "multi";
+
+export type Goal =
+  | "get-hired"
+  | "sell-services"
+  | "capture-leads"
+  | "build-authority"
+  | "creator"
+  | "founder";
+
+export type Tone =
+  | "professional"
+  | "warm"
+  | "bold"
+  | "technical"
+  | "minimal"
+  | "premium";
+
+export type PublicSection =
+  | "About"
+  | "Experience"
+  | "Projects"
+  | "Services"
+  | "Testimonials"
+  | "FAQ"
+  | "Booking"
+  | "Chat";
+
+export type VisualStyle =
+  | "clean-corporate"
+  | "modern-gradient"
+  | "editorial"
+  | "minimal-mono"
+  | "warm-rounded";
+
+/** Typography style applied to the rendered profile. */
+export type FontChoice = "sans" | "serif" | "mono" | "mixed";
+
+/** A full visual design template (the team's 4 designs + the classic builder one). */
+export type ProfileTheme =
+  | "ai"
+  | "classic"
+  | "editorial"
+  | "saas-card"
+  | "executive"
+  | "academic";
+
+export type LayoutBlockType =
+  | "hero" | "about" | "stats" | "skills" | "experience"
+  | "projects" | "services" | "testimonials" | "faq" | "quote" | "chat" | "contact";
+
+export interface LayoutBlock {
+  type: LayoutBlockType;
+  heading?: string;
+  variant?: string;
+  columns?: number;
+}
+
+export interface LayoutSpec {
+  palette: { bg: string; surface: string; ink: string; muted: string; accent: string; accentInk: string };
+  font: "serif" | "sans" | "mono" | "mixed";
+  density: "airy" | "balanced" | "compact";
+  radius: "sharp" | "soft" | "round";
+  heroVariant: "centered" | "split" | "dark-band" | "side-portrait" | "minimal";
+  blocks: LayoutBlock[];
+}
+
+export interface CustomizationAnswers {
+  layout: LayoutKind;
+  goal: Goal;
+  tone: Tone;
+  publicSections: PublicSection[];
+  chatVerifiedOnly: boolean;
+  chatCollectLeads: boolean;
+  bookingCta: boolean;
+  visualStyle: VisualStyle;
+  /** Which full design template to render. */
+  theme: ProfileTheme;
+  /** Typography style. */
+  font: FontChoice;
+}
+
+// --- The generated profile (shape returned by Groq / the mock generator) ---
+
+export interface ProfileStat {
+  label: string;
+  value: string;
+}
+
+export interface Highlight {
   id: string;
+  label: string;
+  value: string;
+  caption: string;
+}
+
+export interface Testimonial {
+  id: string;
+  quote: string;
+  author: string;
+  role: string;
+}
+
+export interface FaqItem {
+  id: string;
+  q: string;
+  a: string;
+}
+
+export interface GeneratedProfile {
   slug: string;
-  owner_user_id: string;
-  owner_display_name: string;
-  meta: {
-    purpose: string;
-    style: string;
-    palette: string;
-    layout_kind: "bento" | "single-column" | "magazine" | "minimal" | "terminal";
-  };
+  name: string;
+  headline: string;
+  role: string;
+  location: string;
+  layout: LayoutKind;
+  tone: Tone;
+  visualStyle: VisualStyle;
+  theme: ProfileTheme;
+  font?: FontChoice;
+  /** Avatar image URL (auto-generated from the name; user can replace). */
+  avatarUrl: string;
+  /** Shape of the avatar/profile photo. */
+  avatarShape?: "circle" | "rounded" | "square";
+  /** Ordered list of public sections (subset of the requested ones). */
+  sections: PublicSection[];
   hero: {
-    headline: string;
-    subheadline: string;
-    cta_label: string;
-    ai_chat_position: "hero" | "floating" | "sidebar" | "embedded" | "none";
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    primaryCta: { label: string; kind: "chat" | "booking" | "contact" };
+    secondaryCta: { label: string; kind: "chat" | "booking" | "contact" } | null;
+    stats: ProfileStat[];
   };
-  sections: Section[];
-  theme: {
-    primary_color: string;
-    accent_color: string;
-    mode: "dark" | "light";
-    particle_density: "off" | "subtle" | "dense";
-  };
-  generated_at: string;
-  version: number;
-};
+  about: { heading: string; body: string };
+  highlights: Highlight[];
+  experience: WorkItem[];
+  projects: ProjectItem[];
+  services: ServiceItem[];
+  testimonials: Testimonial[];
+  faq: FaqItem[];
+  suggestedQuestions: string[];
+  chat: { verifiedOnly: boolean; collectLeads: boolean; greeting: string };
+  booking: { enabled: boolean; label: string; note: string };
+  contact: { email: string; socials: SocialLink[] };
+  /** Present only when theme === "ai": the model-designed layout. */
+  layoutSpec?: LayoutSpec;
+  /** Set by the API layer — not part of the model's JSON output. */
+  generatedBy?: "groq" | "mock";
+  model?: string;
+}
+
+/** Input contract for both the mock generator and the real Groq route. */
+export interface GenerateInput {
+  facts: ExtractedFacts;
+  answers: CustomizationAnswers;
+}
+
+export interface GenerateResult {
+  profile: GeneratedProfile;
+  /** The exact prompt text that was (or would be) sent to Groq. */
+  prompt: string;
+  source: "groq" | "mock";
+  model: string;
+}
+
+// --- Real source extraction (resume PDF, LinkedIn PDF, website, manual) ---
+
+/** Client-held intake — actual File objects + text, before extraction. */
+export interface IntakeFiles {
+  linkedinFile: File | null;
+  resumeFile: File | null;
+  websiteUrl: string;
+  manualBio: string;
+}
+
+export interface ExtractResult {
+  facts: ExtractedFacts;
+  /** Per-source outcome cards (complete / failed). */
+  sources: SourceCard[];
+  source: "groq" | "mock";
+  model: string;
+  notes: string[];
+}
+
+// --- Public chat simulation ---
+
+export interface ChatSource {
+  kind: SourceKind;
+  label: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+  sources?: ChatSource[];
+  /** When true, render a lead-capture card under this message. */
+  offerLeadCapture?: boolean;
+}

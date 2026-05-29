@@ -1,4 +1,0 @@
-State "ask_priority". Apply hero.cta_label inferred from the strongest selected visitor action.
-
-Ask the user to rank sections — kind="rank". options: about, experience, projects, skills, testimonials, blogs.
-next_state: "ask_identity"
