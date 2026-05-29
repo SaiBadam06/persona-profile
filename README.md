@@ -2,42 +2,42 @@
 
 AI-powered public profile + chat-page builder. Upload your LinkedIn profile PDF,
 resume, and website → real extraction (Groq) → customize → generate → publish a
-shareable profile with a public AI chat, in one of several team designs.
+shareable profile with a public AI chat, in one of several designs (incl. an
+AI-invented bento layout).
 
-## Architecture (split for Vercel + Render)
+## Deploy everything on Vercel (recommended — one project)
 
-```
-frontend/   Next.js 15 app  → deploy on Vercel   (no AI deps; calls the backend)
-backend/    Express + TS API → deploy on Render   (Groq, PDF parsing, web crawl)
-```
+The AI runs as **Next.js API routes inside `frontend/`**, so a single Vercel
+project serves the whole app. No separate backend needed.
 
-The frontend calls the backend via `NEXT_PUBLIC_API_BASE`. The Groq key lives
-ONLY in the backend.
+1. Push to GitHub (done).
+2. Vercel → **Add New → Project** → import this repo.
+3. **Root Directory: `frontend`** (important — the repo has `frontend/` and `backend/`).
+4. Framework preset: **Next.js** (auto). Build/Output: defaults.
+5. **Environment Variables** (Project Settings → Environment Variables):
+   - `GROQ_API_KEY` = your Groq key  *(required)*
+   - `GROQ_MODEL` = `llama-3.3-70b-versatile`  *(optional)*
+   - `LLM_PROVIDER` = `groq`  *(optional; or `nvidia` with `NVIDIA_API_KEY` + `NVIDIA_MODEL`)*
+   - `NEXT_PUBLIC_API_BASE` = *(leave empty — client calls same-origin)*
+6. **Deploy.** Your app + APIs are live at `https://<project>.vercel.app`.
 
-## Run locally (two terminals)
+API routes (same-origin): `POST /api/extract`, `POST /api/generate-profile`, `POST /api/edit-profile`.
+
+## Run locally
 
 ```bash
-# 1) backend  → http://localhost:8787
-cd backend
-cp .env.example .env          # set GROQ_API_KEY
-npm install && npm run dev
-
-# 2) frontend → http://localhost:3000
 cd frontend
-npm install && npm run dev    # .env.local already points NEXT_PUBLIC_API_BASE at :8787
+cp .env.local .env.local   # ensure GROQ_API_KEY is set; NEXT_PUBLIC_API_BASE empty
+npm install && npm run dev  # http://localhost:3000
 ```
 
-## Deploy
+## Optional: split backend on Render
 
-- **Backend → Render:** New Web Service, root `backend`, build `npm install`,
-  start `npm start`. Env: `GROQ_API_KEY`, `ALLOWED_ORIGINS=https://<your>.vercel.app`.
-  (A `backend/render.yaml` blueprint is included.)
-- **Frontend → Vercel:** import the repo, root `frontend`. Env:
-  `NEXT_PUBLIC_API_BASE=https://<your-render-service>.onrender.com`.
+`backend/` is a standalone Express + TS version of the same API (for a
+Vercel-frontend + Render-backend split). Not needed for the single-Vercel deploy
+above. To use it: deploy `backend/` on Render (build `npm install`, start
+`npm start`, env `GROQ_API_KEY` + `ALLOWED_ORIGINS`), and set the frontend's
+`NEXT_PUBLIC_API_BASE` to the Render URL.
 
-## Endpoints (backend)
-- `POST /api/extract` — multipart (`linkedin` PDF, `resume` PDF, `website`, `manualBio`) → structured facts
-- `POST /api/generate-profile` — `{ facts, answers }` → generated profile JSON
-- `GET /health`
-
-> Security: rotate the Groq key that was shared in chat. It lives only in `backend/.env` (gitignored).
+> Security: the Groq/NVIDIA keys live only in gitignored `.env*` files — never
+> committed. Rotate any key shared in plaintext.
