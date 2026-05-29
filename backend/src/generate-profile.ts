@@ -40,14 +40,14 @@ function secondaryCta(input: GenerateInput, primary: GeneratedProfile["hero"]["p
 function buildAboutBody(input: GenerateInput): string {
   const { facts, answers } = input;
   const lead = facts.workHistory[0];
-  const proof = lead ? ` Today I'm ${lead.role} at ${lead.company}, where ${lead.summary.charAt(0).toLowerCase()}${lead.summary.slice(1)}` : "";
-  const closer =
-    answers.goal === "sell-services" || answers.goal === "capture-leads"
-      ? " If you're wrestling with an early product or pricing problem, I'd love to help."
-      : answers.goal === "get-hired"
-        ? " I'm looking for a team where I can own product from strategy to ship."
-        : " I share most of what I learn — ask me anything below.";
-  return `${facts.headline}${proof}${closer}`;
+  const bits = [facts.headline || `${facts.role}.`];
+  if (lead && !facts.headline.toLowerCase().includes(lead.company.toLowerCase())) {
+    bits.push(`Currently ${lead.role} at ${lead.company}.`);
+  }
+  if (answers.goal === "sell-services" || answers.goal === "capture-leads")
+    bits.push("Open to new projects — let's talk below.");
+  else if (answers.goal === "get-hired") bits.push("Open to new opportunities.");
+  return bits.join(" ");
 }
 
 function buildHighlights(input: GenerateInput): GeneratedProfile["highlights"] {
@@ -63,12 +63,23 @@ function buildHighlights(input: GenerateInput): GeneratedProfile["highlights"] {
 }
 
 function buildStats(input: GenerateInput): GeneratedProfile["hero"]["stats"] {
-  const years = input.facts.workHistory.length ? "10+" : "10+";
-  return [
-    { label: "Years of experience", value: years },
-    { label: "Roles held", value: `${input.facts.workHistory.length}` },
-    { label: "Skills", value: `${input.facts.skills.length}` },
-  ];
+  const { facts } = input;
+  const out: GeneratedProfile["hero"]["stats"] = [];
+  for (const a of facts.achievements) {
+    if (out.length >= 3) break;
+    const m = a.text.match(/(\$?[\d][\d,.]*\s?[KkMmBb%+]?)/);
+    if (m) {
+      const label = a.text.replace(m[1], "").replace(/^[\s—\-:,]+/, "").trim();
+      out.push({ value: m[1], label: (label || "Highlight").slice(0, 30) });
+    }
+  }
+  const add = (value: number, label: string) => {
+    if (out.length < 3 && value > 0) out.push({ value: `${value}`, label });
+  };
+  add(facts.workHistory.length, facts.workHistory.length === 1 ? "Role" : "Roles");
+  add(facts.projects.length, "Projects");
+  add(facts.skills.length, "Skills");
+  return out.slice(0, 3);
 }
 
 const MOCK_TESTIMONIALS: Testimonial[] = [
@@ -128,7 +139,7 @@ export function generateProfileWithGroqMock(input: GenerateInput): GeneratedProf
     visualStyle: answers.visualStyle,
     theme: answers.theme,
     font: answers.font,
-    avatarUrl: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(facts.name || "PersonaOn")}&backgroundColor=2563eb&textColor=ffffff`,
+    avatarUrl: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(facts.name || "PersonaOn")}&backgroundColor=2563eb,4f46e5,0ea5e9&backgroundType=gradientLinear&textColor=ffffff&fontWeight=600`,
     avatarShape: "circle",
     sections: resolveSections(input),
     hero: {
