@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { generateProfileWithGroqMock } from "@/lib/generate-profile";
 import { buildGroqPromptDisplay, buildGroqSystemPrompt, buildGroqUserPrompt } from "@/lib/groq-prompt";
 import { buildLayoutSystemPrompt, buildLayoutUserPrompt, validateLayoutSpec } from "@/lib/layout-prompt";
-import { activeModel, getLlm, hasLlmKey } from "@/lib/llm";
+import { activeModel, createWithRetry, getLlm, hasLlmKey } from "@/lib/llm";
 import type { GenerateInput, GeneratedProfile, GenerateResult } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
 
   try {
     const { client, model: m } = getLlm();
-    const completion = await client.chat.completions.create({
+    const completion = await createWithRetry(client, {
       model: m,
       temperature: 0.7,
       max_tokens: 2048,
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
 
     if (input.answers.theme === "ai") {
       try {
-        const layout = await client.chat.completions.create({
+        const layout = await createWithRetry(client, {
           model: m,
           temperature: 0.85,
           max_tokens: 1200,

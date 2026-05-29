@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { extractText, getDocumentProxy } from "unpdf";
 import { buildExtractSystemPrompt, buildExtractUserPrompt, type ExtractSourceText } from "@/lib/extract-prompt";
-import { activeModel, getLlm, hasLlmKey } from "@/lib/llm";
-import { MOCK_EXTRACTED_FACTS } from "@/lib/mock-data";
+import { activeModel, createWithRetry, extractModel, getLlm, hasLlmKey } from "@/lib/llm";
 import type { ExtractedFacts, ExtractResult, SocialKind, SourceCard } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const MAX_TEXT = 14000;
+const MAX_TEXT = 8000;
 let seq = 0;
 const id = (p: string) => `${p}-${seq++}`;
 
@@ -140,11 +139,11 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { client, model } = getLlm();
-    const completion = await client.chat.completions.create({
+    const { client, model } = getLlm(extractModel());
+    const completion = await createWithRetry(client, {
       model,
       temperature: 0.2,
-      max_tokens: 2600,
+      max_tokens: 2200,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: buildExtractSystemPrompt() },
@@ -156,9 +155,11 @@ export async function POST(req: Request) {
     const result: ExtractResult = { facts, sources, source: "groq", model, notes };
     return NextResponse.json(result);
   } catch (err) {
-    console.error("[extract] failed:", err);
-    notes.push("Extraction model call failed — showing the demo profile to edit.");
-    const result: ExtractResult = { facts: MOCK_EXTRACTED_FACTS, sources, source: "mock", model: activeModel(), notes };
-    return NextResponse.json(result);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[extract] failed:", msg);
+    notes.push(`Extraction failed: ${msg.slice(0, 220)}`);
+    // Return a BLANK profile (not the demo) + the real reason, so you can see what broke and edit your own.
+    const empty: ExtractedFacts = { name: "", headline: "", role: "", location: "", skills: [], workHistory: [], projects: [], achievements: [], services: [], socialLinks: [] };
+    return NextResponse.json({ facts: empty, sources, source: "mock", model: activeModel(), notes });
   }
 }
