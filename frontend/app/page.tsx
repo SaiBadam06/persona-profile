@@ -275,7 +275,7 @@ export default function BuilderPage() {
       {(generating || architecting) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-sm">
           <PersonaLoader
-            size={72}
+            size={132}
             label={architecting ? "Analyzing your profile…" : "Generating your page…"}
           />
         </div>

@@ -58,7 +58,7 @@ export default function PublicProfilePage() {
         </ProfileEditProvider>
       ) : (
         <div className="flex h-screen items-center justify-center p-10">
-          <PersonaLoader size={64} label="Loading profile…" />
+          <PersonaLoader size={132} label="Loading profile…" />
         </div>
       )}
 
