@@ -32,7 +32,10 @@
 }
 .po-theme *, .po-theme *::before, .po-theme *::after { box-sizing: border-box; }
 .po-theme a { text-decoration: none; color: inherit; }
-.po-theme button { cursor: pointer; font-family: inherit; border: none; background: none; }
+/* :where() keeps the reset at zero specificity for the `button` part so styled
+   button classes (.btn-solid, .s-cta, …) still win — otherwise `.po-theme button`
+   (0,1,1) would override every button class (0,1,0) and strip their backgrounds. */
+.po-theme :where(button) { cursor: pointer; font-family: inherit; border: none; background: none; }
 .po-theme img { display: block; max-width: 100%; }
 .po-theme h1, .po-theme h2, .po-theme h3, .po-theme p { margin: 0; }
 
@@ -179,7 +182,7 @@
 .d2 { background:var(--paper); font-family:var(--sans); }
 .d2-wrap { max-width:1040px; margin:0 auto; padding:var(--s7) var(--s8); }
 .d2-card { background:var(--white); border:1px solid var(--ink-08); border-radius:var(--r-xl); overflow:hidden; margin-bottom:var(--s5); }
-.d2-cover { height:110px; background:var(--ink); position:relative; overflow:hidden; }
+.d2-cover { height:96px; background:linear-gradient(120deg, var(--blue) 0%, #1c3a5e 48%, var(--ink) 100%); position:relative; overflow:hidden; }
 .d2-cover::after { content:''; position:absolute; inset:0; background-image: repeating-linear-gradient(0deg,transparent,transparent 23px,rgba(255,255,255,.04) 23px,rgba(255,255,255,.04) 24px), repeating-linear-gradient(90deg,transparent,transparent 23px,rgba(255,255,255,.04) 23px,rgba(255,255,255,.04) 24px); }
 .d2-profile-row { padding:0 28px 22px; display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; }
 .d2-av-wrap { margin-top:-38px; position:relative; flex-shrink:0; }
@@ -369,4 +372,18 @@
   .d2-blog-grid, .d4-contact-grid { grid-template-columns: 1fr; }
   .s-nav, .d1-above, .d4-hdr { padding-left: 20px; padding-right: 20px; }
   .s-links, .d4-hdr-nav { display: none; }
+}
+
+/* — SaaS-card (D2) phone polish: tighter gutters + a full-width, tappable CTA — */
+@media (max-width: 560px) {
+  .d2-cover { height: 72px; }
+  .d2-profile-row { padding: 0 16px 18px; gap: 12px; }
+  .d2-info { min-width: 0; padding-top: 10px; }
+  .d2-name { font-size: 20px; }
+  .d2-actions { width: 100%; padding-top: 4px; }
+  .d2-actions .btn-solid, .d2-actions .btn-out { flex: 1; justify-content: center; text-align: center; }
+  .d2-bio-strip { padding: 14px 16px; gap: 14px; }
+  .d2-stats { gap: 18px; }
+  .po-flow { gap: 12px; }
+  .po-flow > .po-block { padding: 16px; }
 }
