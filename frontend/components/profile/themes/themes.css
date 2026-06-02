@@ -141,8 +141,8 @@
 .d1-issue strong { color:var(--ink); }
 .d1-po-brand { display:flex; align-items:center; gap:6px; }
 .d1-hero { border-bottom:1px solid var(--ink-08); }
-.d1-hero-inner { max-width:1160px; margin:0 auto; padding:0 var(--s9); display:grid; grid-template-columns:1fr 320px; gap:0; }
-.d1-hl { padding:38px 48px 38px 0; border-right:1px solid var(--ink-08); }
+.d1-hero-inner { max-width:1160px; margin:0 auto; padding:0 var(--s9); display:grid; grid-template-columns:1fr 320px; gap:0; align-items:start; }
+.d1-hl { padding:30px 48px 30px 0; border-right:1px solid var(--ink-08); }
 .d1-overline { font-family:var(--sans); font-size:10px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-45); margin-bottom:14px; }
 .d1-name-row { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
 .d1-name { font-family:var(--serif); font-size:54px; line-height:1; color:var(--ink); letter-spacing:-1.5px; }
@@ -155,8 +155,8 @@
 .d1-meta-lbl { font-family:var(--sans); font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-20); }
 .d1-meta-val { font-family:var(--sans); font-size:12px; font-weight:600; color:var(--ink); }
 .d1-tags { display:flex; gap:5px; flex-wrap:wrap; }
-.d1-hr { padding:38px 0 38px 40px; }
-.d1-portrait { width:100%; aspect-ratio:4/5; background:linear-gradient(160deg,#d8d2c8,#b5ac9e); position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; margin-bottom:14px; border-radius:18px; }
+.d1-hr { padding:30px 0 30px 40px; }
+.d1-portrait { width:100%; aspect-ratio:1/1; background:linear-gradient(160deg,#d8d2c8,#b5ac9e); position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; margin-bottom:14px; border-radius:18px; }
 .d1-portrait-initial { font-family:var(--serif); font-size:80px; font-weight:300; color:rgba(255,255,255,.55); letter-spacing:-3px; }
 .d1-portrait-caption { position:absolute; bottom:0; left:0; right:0; background:rgba(255,255,255,.92); padding:10px 14px; display:flex; align-items:center; justify-content:space-between; }
 .d1-portrait-caption-name { font-family:var(--sans); font-size:12px; font-weight:600; color:var(--ink); }
@@ -241,7 +241,7 @@
 .d3-stat:last-child { border-right:none; }
 .d3-stat-n { font-family:var(--serif); font-size:34px; color:var(--white); line-height:1; margin-bottom:3px; }
 .d3-stat-l { font-size:11px; color:rgba(255,255,255,.35); }
-.d3-body { max-width:1040px; margin:0 auto; padding:var(--s8) var(--s9); display:grid; grid-template-columns:1fr 280px; gap:36px; }
+.d3-body { max-width:1160px; margin:0 auto; padding:var(--s8) var(--s9); display:block; }
 .d3-main { display:flex; flex-direction:column; gap:34px; }
 .d3-sec-hd { font-size:10px; font-weight:700; letter-spacing:.15em; text-transform:uppercase; color:var(--ink-45); margin-bottom:16px; padding-bottom:9px; border-bottom:1px solid var(--ink-08); }
 .tl { display:flex; flex-direction:column; }
@@ -295,7 +295,7 @@
 .d4-contact-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px 22px; }
 .d4-ci { font-size:12px; color:var(--ink-45); }
 .d4-ci span { font-weight:600; color:var(--ink); }
-.d4-main { max-width:1140px; margin:0 auto; padding:0 56px 56px; display:grid; grid-template-columns:1fr 234px; gap:46px; }
+.d4-main { max-width:1140px; margin:0 auto; padding:0 56px 56px; display:block; }
 .d4-sec { margin-bottom:40px; }
 .d4-sec-hd { font-size:10px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-45); margin-bottom:18px; padding-bottom:7px; border-bottom:1.5px solid var(--ink); }
 .paper { margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid var(--ink-08); }
@@ -311,6 +311,52 @@
 .d4-stat-item { display:flex; gap:9px; align-items:center; margin-bottom:9px; }
 .d4-stat-n { font-family:var(--serif); font-size:25px; color:var(--ink); min-width:55px; line-height:1; }
 .d4-stat-l { font-size:11px; color:var(--ink-45); line-height:1.38; }
+
+/* ── Bento body grid ─────────────────────────────────────────────────────────
+   Sections become tiles in an auto-fitting grid. `auto-fit` makes the tiles in
+   the last row grow to fill the row width (no right-side gap); the default
+   `stretch` makes every tile in a row the same height (no bottom gap); and
+   `dense` packing tucks wide tiles in without leaving holes. This keeps every
+   template visually full no matter how much data a person has. */
+.po-flow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  grid-auto-flow: row dense;
+  gap: 16px;
+  align-items: stretch;
+}
+/* Every section is a self-contained tile so an under-filled one still reads as
+   an intentional card rather than blank page. */
+.po-flow > .po-block {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  background: var(--white);
+  border: 1px solid var(--ink-08);
+  border-radius: var(--r-xl);
+  padding: 18px 20px;
+  margin: 0;
+}
+/* A tile that should read as a feature — spans two columns. */
+.po-flow > .po-block.span2 { grid-column: span 2; }
+@media (max-width: 640px) { .po-flow > .po-block.span2 { grid-column: span 1; } }
+/* A content-heavy block claims the whole row and lays its items in an internal
+   grid, so short blocks (skills, contact) pack together beneath it instead of
+   stranding empty columns beside a tall list. */
+.po-flow > .po-block.span-full { grid-column: 1 / -1; }
+.po-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; align-items: start; }
+.po-cards > .proj, .po-cards > .d2-exp, .po-cards > .paper { margin-bottom: 0; }
+/* In-page anchor nav: smooth scroll + a little breathing room above the target. */
+.po-theme { scroll-behavior: smooth; }
+.po-flow > .po-block[id], [id^="d1-"], [id^="d3-"], [id^="d4-"] { scroll-margin-top: 24px; }
+@media (max-width: 640px) { .po-flow > .po-block.span-full { grid-column: 1 / -1; } .po-cards { grid-template-columns: 1fr; } }
+/* The chat tile is always a full-width landscape rectangle (length > breadth).
+   It carries no tile chrome of its own — the chat widget supplies the box. */
+.po-flow > .po-block.chat-tile { grid-column: 1 / -1; background:transparent; border:none; padding:0; }
+.chat-tile .po-block-title, .chat-tile .d3-sec-hd, .chat-tile .d2-sec-hd, .chat-tile .d4-sec-hd { margin-bottom: 12px; }
+/* A heading that introduces a tile */
+.po-block-title { font-family:var(--serif); font-size:18px; color:var(--ink); padding-bottom:9px; border-bottom:1px solid var(--ink-08); margin-bottom:14px; }
+/* Executive / SaaS tiles already supply their own card chrome — don't double it */
+.po-card, .d2-sec.po-block { background:var(--white); }
 
 /* — Responsive: collapse the multi-column theme grids on narrow screens — */
 @media (max-width: 720px) {

@@ -59,6 +59,16 @@ function secondaryCta(
   return { label: "Chat with my persona", kind: "chat" };
 }
 
+// Goal-aware closing line for the About section — keeps each persona's page on-message.
+const ABOUT_TAIL: Record<Goal, string> = {
+  "get-hired": "Open to new opportunities.",
+  "sell-services": "Open to new projects — let's talk below.",
+  "capture-leads": "Looking to connect — reach out below.",
+  "build-authority": "I write and speak about my work — say hello below.",
+  creator: "Always building something new — come along.",
+  founder: "Building in public — open to investors, candidates, and partners.",
+};
+
 function buildAboutBody(input: GenerateInput): string {
   const { facts, answers } = input;
   const lead = facts.workHistory[0];
@@ -66,9 +76,7 @@ function buildAboutBody(input: GenerateInput): string {
   if (lead && !facts.headline.toLowerCase().includes(lead.company.toLowerCase())) {
     bits.push(`Currently ${lead.role} at ${lead.company}.`);
   }
-  if (answers.goal === "sell-services" || answers.goal === "capture-leads")
-    bits.push("Open to new projects — let's talk below.");
-  else if (answers.goal === "get-hired") bits.push("Open to new opportunities.");
+  bits.push(ABOUT_TAIL[answers.goal]);
   return bits.join(" ");
 }
 
@@ -86,6 +94,49 @@ function buildHighlights(input: GenerateInput): GeneratedProfile["highlights"] {
   });
 }
 
+// Stat words we never want a label to start or end on — prepositions, articles,
+// and connectors that read as dangling fragments ("...flagship to", "at SaaStr").
+const STAT_STOPWORDS = new Set([
+  "a", "an", "the", "to", "of", "in", "on", "at", "for", "and", "with", "by", "from",
+  "that", "our", "their", "its", "his", "her", "my", "was", "were", "is", "are", "as",
+  "into", "over", "per", "up", "new", "more", "than", "about", "across", "within", "via",
+]);
+
+// Turn an achievement sentence + the number we lifted from it into a SHORT, complete,
+// professional metric label — preferring the unit/noun right after the number
+// ("$1.2M ARR" → "ARR", "40,000 paying teams" → "Paying teams"), else the leading
+// phrase. Never a mid-word truncation or a trailing preposition, so every theme reads formally.
+function statLabel(sentence: string, valueToken: string): string {
+  const words = (s: string) =>
+    (s.match(/[A-Za-z0-9'’&/+%.-]+/g) ?? []).filter((w) => /[A-Za-z]/.test(w));
+  const idx = sentence.indexOf(valueToken);
+  const after = idx >= 0 ? sentence.slice(idx + valueToken.length) : "";
+  const before = idx >= 0 ? sentence.slice(0, idx) : sentence;
+
+  const take = (list: string[], max: number) => {
+    const w = [...list];
+    while (w.length && STAT_STOPWORDS.has(w[0].toLowerCase())) w.shift();
+    const out: string[] = [];
+    for (const word of w) {
+      if (out.length >= max || STAT_STOPWORDS.has(word.toLowerCase())) break;
+      out.push(word);
+    }
+    return out;
+  };
+
+  const afterWords = words(after);
+  let chosen: string[] = [];
+  // Use the post-number phrase only when it begins with a real word (a unit/noun),
+  // not a connector like "in 14 months" or "on founder-led product".
+  if (afterWords.length && !STAT_STOPWORDS.has(afterWords[0].toLowerCase())) {
+    chosen = take(afterWords, 3);
+  }
+  if (!chosen.length) chosen = take(words(before), 3);
+
+  const label = chosen.join(" ").trim() || "Highlight";
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 function buildStats(input: GenerateInput): GeneratedProfile["hero"]["stats"] {
   const { facts } = input;
   const out: GeneratedProfile["hero"]["stats"] = [];
@@ -94,8 +145,7 @@ function buildStats(input: GenerateInput): GeneratedProfile["hero"]["stats"] {
     if (out.length >= 3) break;
     const m = a.text.match(/(\$?[\d][\d,.]*\s?[KkMmBb%+]?)/);
     if (m) {
-      const label = a.text.replace(m[1], "").replace(/^[\s—\-:,]+/, "").trim();
-      out.push({ value: m[1], label: (label || "Highlight").slice(0, 30) });
+      out.push({ value: m[1].trim(), label: statLabel(a.text, m[1]) });
     }
   }
   const add = (value: number, label: string) => {
@@ -149,12 +199,26 @@ function buildFaq(input: GenerateInput): GeneratedProfile["faq"] {
       a: "I typically have room for one or two new engagements a month. The fastest path is to book an intro call or ask the chat below about availability.",
     },
   ];
-  if (answers.goal === "get-hired") {
-    faq[0] = {
-      id: "f-1",
+  const leadFaq: Partial<Record<Goal, { q: string; a: string }>> = {
+    "get-hired": {
       q: "What kind of role are you looking for?",
       a: "A senior or head-of-product role at a team that wants product owned end to end — strategy, discovery, and shipping.",
-    };
+    },
+    founder: {
+      q: "What are you building?",
+      a: "I'm focused on the company in my work below. Happy to talk with investors, prospective teammates, and partners — book a call or ask the chat.",
+    },
+    "build-authority": {
+      q: "What do you write and speak about?",
+      a: "The themes across my projects and writing below. I'm open to podcasts, panels, and collaborations — reach out via the chat.",
+    },
+    creator: {
+      q: "What are you working on right now?",
+      a: "The latest is in Projects below. I love collaborating — say hi through the chat and tell me what you're making.",
+    },
+  };
+  if (leadFaq[answers.goal]) {
+    faq[0] = { id: "f-1", ...leadFaq[answers.goal]! };
   }
   return faq;
 }
@@ -174,9 +238,14 @@ function buildSuggestedQuestions(input: GenerateInput): string[] {
   if (answers.goal === "sell-services" || answers.bookingCta) {
     qs.push("Are you available to take on a new project right now?");
   }
-  if (answers.goal === "get-hired") {
-    qs.push("What are you looking for in your next role?");
-  }
+  const goalQuestion: Partial<Record<Goal, string>> = {
+    "get-hired": "What are you looking for in your next role?",
+    "capture-leads": "How could we work together?",
+    "build-authority": "What's your take on where this field is heading?",
+    creator: "What are you working on lately?",
+    founder: "What are you building, and are you raising?",
+  };
+  if (goalQuestion[answers.goal]) qs.push(goalQuestion[answers.goal]!);
   return qs.slice(0, 6);
 }
 
@@ -193,10 +262,10 @@ const SECTION_ORDER: PublicSection[] = [
 
 function resolveSections(input: GenerateInput): PublicSection[] {
   const { facts, answers } = input;
-  const requested = new Set(answers.publicSections);
-  return SECTION_ORDER.filter((s) => {
-    if (!requested.has(s)) return false;
-    // Drop sections that have no data to show.
+  // Honor the ORDER of publicSections (the Architect reorders it by importance),
+  // dropping any section that has no data to show.
+  const order = answers.publicSections.length ? answers.publicSections : SECTION_ORDER;
+  return order.filter((s) => {
     if (s === "Experience") return facts.workHistory.length > 0;
     if (s === "Projects") return facts.projects.length > 0;
     if (s === "Services") return facts.services.length > 0;
@@ -223,7 +292,7 @@ export function generateProfileWithGroqMock(input: GenerateInput): GeneratedProf
     visualStyle: answers.visualStyle,
     theme: answers.theme,
     font: answers.font,
-    avatarUrl: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(facts.name || "PersonaOn")}&backgroundColor=2563eb,4f46e5,0ea5e9&backgroundType=gradientLinear&textColor=ffffff&fontWeight=600`,
+    avatarUrl: "", // empty → polished monogram; user can upload a real photo
     avatarShape: "circle",
     sections: resolveSections(input),
     hero: {

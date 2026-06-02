@@ -227,6 +227,8 @@ export interface GeneratedProfile {
   contact: { email: string; socials: SocialLink[] };
   /** Present only when theme === "ai": the model-designed layout. */
   layoutSpec?: LayoutSpec;
+  /** Architect importance scores (section -> 0..100) — drives ordering & sizing. */
+  importance?: Record<string, number>;
   /** Set by the API layer — not part of the model's JSON output. */
   generatedBy?: "groq" | "mock";
   model?: string;
@@ -256,6 +258,37 @@ export interface IntakeFiles {
   manualBio: string;
 }
 
+// --- Persona Architect: AI reasons about IA before generating UI ---
+
+export interface ArchitectPlan {
+  personaType: string;
+  reasoning: string;
+  visitorsWant: string;
+  pattern: string; // portfolio | recruiter | founder | research | creator | student
+  recommendedTheme: ProfileTheme;
+  /** section -> importance score 0..100 */
+  importance: Record<string, number>;
+  /** public sections sorted by importance (highest first) */
+  order: PublicSection[];
+  source: "groq" | "mock";
+}
+
+// --- Persona chat (published page): one chat that answers, edits, or declines ---
+
+export type PersonaChatIntent = "answer" | "edit" | "refuse";
+
+/** Response from /api/persona-chat — the published-page chat's unified action. */
+export interface PersonaChatResponse {
+  intent: PersonaChatIntent;
+  /** What the chat bubble says back to the visitor/owner. */
+  reply: string;
+  /** Verified-source badges (only meaningful for intent === "answer"). */
+  sources?: ChatSource[];
+  /** Full profile after applying an edit (only for intent === "edit"). */
+  updatedProfile?: GeneratedProfile;
+  source: "groq" | "mock";
+}
+
 export interface ExtractResult {
   facts: ExtractedFacts;
   /** Per-source outcome cards (complete / failed). */
@@ -279,4 +312,6 @@ export interface ChatMessage {
   sources?: ChatSource[];
   /** When true, render a lead-capture card under this message. */
   offerLeadCapture?: boolean;
+  /** When true, this assistant turn applied a live edit to the page. */
+  edited?: boolean;
 }

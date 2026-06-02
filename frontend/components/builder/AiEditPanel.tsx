@@ -15,6 +15,19 @@ const QUICK = [
   { label: "Fix grammar", instr: "Fix grammar and spelling and tighten any awkward phrasing." },
 ];
 
+const DESIGN = [
+  { label: "Executive look", instr: "Switch to the Executive template (theme 'executive') — dark hero, big stats." },
+  { label: "Editorial", instr: "Switch to the Editorial template (theme 'editorial') — serif, magazine feel." },
+  { label: "SaaS card", instr: "Switch to the SaaS Card template (theme 'saas-card')." },
+  { label: "Academic", instr: "Switch to the Academic template (theme 'academic')." },
+  { label: "Bold AI design", instr: "Switch to the AI-designed bento layout (theme 'ai') with a vivid, unique look." },
+  { label: "Standard", instr: "Switch to the Standard full-width layout (theme 'classic')." },
+  { label: "Multi-page", instr: "Use a multi-page layout with tabs." },
+  { label: "Serif font", instr: "Use an elegant serif font throughout." },
+  { label: "Round photo", instr: "Make the profile photo a circle." },
+  { label: "Lead with projects", instr: "Reorder so Projects appears first, then Experience." },
+];
+
 export function AiEditPanel({
   profile,
   onChange,
@@ -46,9 +59,10 @@ export function AiEditPanel({
           <Wand2 className="size-4" />
         </span>
         <h3 className="text-sm font-semibold">Edit with AI</h3>
-        <span className="ml-auto text-xs text-muted-foreground">Rewrites your copy — preview updates live</span>
+        <span className="ml-auto text-xs text-muted-foreground">Changes copy &amp; design — preview updates live</span>
       </div>
 
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Copy</p>
       <div className="mb-3 flex flex-wrap gap-2">
         {QUICK.map((q) => (
           <button
@@ -61,6 +75,24 @@ export function AiEditPanel({
             )}
           >
             {busy === q.label ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3 text-primary" />}
+            {q.label}
+          </button>
+        ))}
+      </div>
+
+      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Design</p>
+      <div className="mb-3 flex flex-wrap gap-2">
+        {DESIGN.map((q) => (
+          <button
+            key={q.label}
+            onClick={() => run(q.instr, q.label)}
+            disabled={!!busy}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary/60 px-3 py-1.5 text-xs font-medium transition hover:border-primary/40 hover:bg-accent disabled:opacity-50",
+              busy === q.label && "border-primary text-primary"
+            )}
+          >
+            {busy === q.label ? <Loader2 className="size-3 animate-spin" /> : <Wand2 className="size-3 text-primary" />}
             {q.label}
           </button>
         ))}

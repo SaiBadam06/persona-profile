@@ -18,6 +18,36 @@ const GOAL_LABEL: Record<Goal, string> = {
   founder: "tell a compelling startup founder story",
 };
 
+// Per-goal playbook: what to emphasize, the CTA strategy, how the AI chat should
+// behave, and what a great visit should end in. Drives role-aware generation so a
+// founder's page reads nothing like a job-seeker's, even on the same template.
+const GOAL_PLAYBOOK: Record<Goal, string> = {
+  "get-hired":
+    "Audience: recruiters & hiring managers. Lead with experience, impact metrics, and skills. " +
+    "Hero CTA points to chat/contact. Chat should answer role-fit questions and surface availability. " +
+    "A great visit ends in a recruiter reaching out about a role.",
+  "sell-services":
+    "Audience: prospective clients. Lead with services, a clear process, and proof (testimonials, outcomes). " +
+    "Hero CTA pushes to book an intro call. Chat should qualify scope/needs and steer toward booking. " +
+    "A great visit ends in a booked discovery call.",
+  "capture-leads":
+    "Audience: warm inbound. Make the next step obvious and low-friction. Emphasize a single offer and social proof. " +
+    "Hero CTA captures contact or books a call. Chat should ask 1–2 qualifying questions, then collect the lead. " +
+    "A great visit ends in a captured, qualified lead.",
+  "build-authority":
+    "Audience: peers, press, event organizers. Lead with point of view, writing/speaking, and notable work. " +
+    "Hero CTA invites following or reaching out. Chat should speak to their thinking and body of work. " +
+    "A great visit ends in a follow, a press/podcast invite, or a subscribe.",
+  creator:
+    "Audience: fans & collaborators. Lead with projects, output, and what they're building/making. " +
+    "Hero CTA pushes to the work or to collaborate. Chat should be energetic and showcase output. " +
+    "A great visit ends in a new follower or collaboration request.",
+  founder:
+    "Audience: investors, candidates, partners, press. Lead with traction (real metrics/stats), what they're building, " +
+    "and vision. Hero CTA pushes to book a call or get the deck. Chat should pitch on their behalf and qualify whether " +
+    "the visitor is an investor, candidate, or customer, then route accordingly. A great visit ends in a booked call.",
+};
+
 const TONE_GUIDANCE: Record<Tone, string> = {
   professional: "polished, credible, confident — no fluff",
   warm: "approachable and human, first-person, generous",
@@ -49,6 +79,9 @@ export const OUTPUT_SCHEMA_HINT = `Return ONLY valid JSON matching this shape:
   "booking": { "label": string, "note": string },
   "faq": [{ "q": string, "a": string }]
 }
+Stats: 1–3 items. "value" is ONE metric token only (e.g. "$1.2M", "40k", "2023", "3×", "98%").
+"label" is a 1–3 word metric descriptor in Title case (e.g. "ARR", "Paying teams", "Funding raised",
+"Years leading product") — never a sentence, a fragment, or a trailing preposition like "...to"/"...at".
 Write all copy in the requested tone. Never invent facts beyond the provided profile.`;
 
 export function buildGroqSystemPrompt(): string {
@@ -96,9 +129,13 @@ export function buildGroqUserPrompt(input: GenerateInput): string {
   lines.push(`Include booking CTA: ${answers.bookingCta ? "yes" : "no"}`);
 
   lines.push("");
+  lines.push("## GOAL PLAYBOOK");
+  lines.push(GOAL_PLAYBOOK[answers.goal]);
+
+  lines.push("");
   lines.push("## TASK");
   lines.push(
-    `Generate the profile copy. Optimize the hero and CTAs for the goal "${GOAL_LABEL[answers.goal]}".`
+    `Generate the profile copy. Optimize the hero, CTAs, suggested questions, chat greeting, and FAQ for the goal "${GOAL_LABEL[answers.goal]}" using the playbook above. Emphasize the sections that audience cares about most.`
   );
   lines.push(OUTPUT_SCHEMA_HINT);
 

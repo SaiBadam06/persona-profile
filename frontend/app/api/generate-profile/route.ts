@@ -8,6 +8,37 @@ import type { GenerateInput, GeneratedProfile, GenerateResult } from "@/lib/type
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+// Clamp a stat label to a length without cutting a word in half or leaving a
+// dangling connector — so "Scaled flagship product to" never renders as "...pr".
+function clampStatLabel(s: string, max = 36): string {
+  s = s.replace(/\s+/g, " ").trim();
+  if (s.length > max) {
+    const cut = s.slice(0, max);
+    const sp = cut.lastIndexOf(" ");
+    s = sp > 12 ? cut.slice(0, sp) : cut;
+  }
+  return s.replace(/[\s,;:.–—-]*\b(?:to|of|in|on|at|for|and|with|by|from|the|a|an)$/i, "").replace(/[\s,;:–—-]+$/, "").trim();
+}
+
+/** Keep stat "value" a short number; push any extra description into the label. */
+function sanitizeStats(arr: unknown, fallback: GeneratedProfile["hero"]["stats"]): GeneratedProfile["hero"]["stats"] {
+  if (!Array.isArray(arr) || !arr.length) return fallback;
+  return (arr as Record<string, unknown>[])
+    .map((s) => {
+      let value = String(s.value ?? "").trim();
+      let label = String(s.label ?? "").trim();
+      const m = value.match(/^(\$?\d[\d,.]*\s?[KkMmBb%+]?\+?)/);
+      if (m && m[1].length < value.length) {
+        const extra = value.slice(m[1].length).replace(/^[\s(:–—-]+/, "").replace(/[)\s]+$/, "").trim();
+        if (extra) label = label ? `${extra}` : extra;
+        value = m[1].trim();
+      }
+      return { value: value.slice(0, 10), label: clampStatLabel(label) };
+    })
+    .filter((s) => s.value)
+    .slice(0, 3);
+}
+
 function applyModelCopy(base: GeneratedProfile, raw: Record<string, unknown>): GeneratedProfile {
   const out: GeneratedProfile = { ...base };
   const hero = raw.hero as Record<string, unknown> | undefined;
@@ -17,7 +48,7 @@ function applyModelCopy(base: GeneratedProfile, raw: Record<string, unknown>): G
       eyebrow: (hero.eyebrow as string) ?? base.hero.eyebrow,
       title: (hero.title as string) ?? base.hero.title,
       subtitle: (hero.subtitle as string) ?? base.hero.subtitle,
-      stats: Array.isArray(hero.stats) && hero.stats.length ? (hero.stats as GeneratedProfile["hero"]["stats"]) : base.hero.stats,
+      stats: sanitizeStats(hero.stats, base.hero.stats),
     };
   }
   const about = raw.about as Record<string, string> | undefined;

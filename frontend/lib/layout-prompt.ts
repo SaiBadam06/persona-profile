@@ -18,10 +18,20 @@ export function buildLayoutUserPrompt(profile: GeneratedProfile): string {
   const available = profile.sections.length
     ? profile.sections.join(", ")
     : "About, Experience, Projects, Services, Chat, Contact";
+  // Item counts let the model size each block by how much content it holds.
+  const counts = [
+    `experience:${profile.experience.length}`,
+    `projects:${profile.projects.length}`,
+    `services:${profile.services.length}`,
+    `testimonials:${profile.testimonials.length}`,
+    `faq:${profile.faq.length}`,
+    `highlights:${profile.highlights.length}`,
+  ].join(", ");
   return [
     `Design a layout for: ${profile.name}, ${profile.role}. ${profile.headline}`,
     `Goal/eyebrow: ${profile.hero.eyebrow}. Tone: ${profile.tone}. Location: ${profile.location}.`,
     `Content available: ${available}. Has chat: ${profile.sections.includes("Chat")}. Booking: ${profile.booking.enabled}.`,
+    `Content volume (item counts): ${counts}.`,
     "",
     "Return ONLY JSON of this exact shape:",
     `{
@@ -36,6 +46,15 @@ export function buildLayoutUserPrompt(profile: GeneratedProfile): string {
     "Only include data blocks (experience/projects/services/skills/testimonials/faq) if that content exists.",
     "Include a 'chat' block if chat is available, and a 'contact' block near the end.",
     "palette must be 6 valid hex colours with strong contrast between 'ink' and 'bg'.",
+    "",
+    "SPACE EFFICIENCY — think like a senior layout engineer; the page must read as",
+    "intentional and tight, never with tall empty gaps beside short blocks:",
+    "- Size 'columns' by content volume: a block with many items (≈3+) takes 2–3 columns",
+    "  so its cards tile across the width; a sparse block (skills, contact, a 1–2 item list)",
+    "  takes 1 column so several pack together on one row.",
+    "- Never place one very tall block in the same row as a short one — give the heavy block",
+    "  its own full-width row (3 columns) and let the light blocks share the row below it.",
+    "- Order blocks so column widths roughly balance row by row; aim for a full, even grid.",
   ].join("\n");
 }
 

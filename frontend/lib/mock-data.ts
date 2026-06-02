@@ -246,6 +246,6 @@ export const DEFAULT_CUSTOMIZATION: CustomizationAnswers = {
   chatCollectLeads: true,
   bookingCta: true,
   visualStyle: "clean-corporate",
-  theme: "editorial",
+  theme: "classic",
   font: "mixed",
 };

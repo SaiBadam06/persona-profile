@@ -10,6 +10,7 @@ import {
   Link2,
   Pencil,
   RotateCcw,
+  Sparkles,
   type LucideIcon,
   FileStack,
   ScanLine,
@@ -25,6 +26,7 @@ import { AiEditPanel } from "@/components/builder/AiEditPanel";
 import { SharePanel } from "@/components/profile/SharePanel";
 import { PersonaLoader } from "@/components/PersonaLoader";
 import { generateProfile } from "@/lib/profile-client";
+import { getArchitectPlan } from "@/lib/architect-client";
 import {
   DEFAULT_CUSTOMIZATION,
   EMPTY_FACTS,
@@ -32,6 +34,7 @@ import {
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import type {
+  ArchitectPlan,
   CustomizationAnswers,
   ExtractedFacts,
   GenerateResult,
@@ -64,6 +67,8 @@ export default function BuilderPage() {
   const [result, setResult] = useState<GenerateResult | null>(null);
   const [publicUrl, setPublicUrl] = useState("https://personaon.com/p/profile");
   const [generating, setGenerating] = useState(false);
+  const [architecting, setArchitecting] = useState(false);
+  const [plan, setPlan] = useState<ArchitectPlan | null>(null);
 
   const PUBLISH_IDX = STEPS.findIndex((s) => s.key === "publish");
   const step = STEPS[stepIdx].key;
@@ -73,11 +78,42 @@ export default function BuilderPage() {
     setMaxReached((m) => Math.max(m, idx));
   }
 
-  // Generate the page directly, then land on Publish (no separate step).
-  async function runGenerate() {
+  // Step 1 of generate: the Persona Architect proposes IA + template before any UI.
+  async function runArchitect() {
+    setArchitecting(true);
+    try {
+      const p = await getArchitectPlan({ facts, answers });
+      setPlan(p);
+    } catch {
+      runGenerate(); // architect unavailable → just generate
+    } finally {
+      setArchitecting(false);
+    }
+  }
+
+  // Apply the architect's plan (reorder by importance, optionally switch template), then generate.
+  function applyPlan(useTheme: boolean) {
+    if (!plan) return;
+    const next: CustomizationAnswers = {
+      ...answers,
+      publicSections: plan.order.length ? plan.order : answers.publicSections,
+      ...(useTheme ? { theme: plan.recommendedTheme } : {}),
+    };
+    setAnswers(next);
+    const imp = plan.importance;
+    setPlan(null);
+    runGenerate(next, imp);
+  }
+
+  // Generate the page, then land on Publish.
+  async function runGenerate(
+    a: CustomizationAnswers = answers,
+    importance?: Record<string, number>
+  ) {
     setGenerating(true);
     try {
-      const r = await generateProfile({ facts, answers });
+      const r = await generateProfile({ facts, answers: a });
+      if (importance) r.profile.importance = importance;
       setResult(r);
       goto(PUBLISH_IDX);
     } finally {
@@ -103,10 +139,9 @@ export default function BuilderPage() {
       {/* Top app bar */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/personaon-mark.svg" alt="PersonaOn" className="size-8" />
-            <span className="text-base font-semibold tracking-tight">PersonaOn</span>
+            <img src="/personaon-logo.svg" alt="PersonaOn" className="h-8 w-auto" />
             <span className="hidden rounded-full bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground sm:inline">
               Profile builder
             </span>
@@ -218,7 +253,7 @@ export default function BuilderPage() {
                 answers={answers}
                 onChange={(p) => setAnswers((a) => ({ ...a, ...p }))}
                 onBack={() => goto(1)}
-                onGenerate={runGenerate}
+                onGenerate={runArchitect}
               />
             )}
 
@@ -237,11 +272,109 @@ export default function BuilderPage() {
         </AnimatePresence>
       </main>
 
-      {generating && (
+      {(generating || architecting) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-sm">
-          <PersonaLoader size={72} label="Generating your page…" />
+          <PersonaLoader
+            size={72}
+            label={architecting ? "Analyzing your profile…" : "Generating your page…"}
+          />
         </div>
       )}
+
+      {plan && !generating && (
+        <ArchitectModal
+          plan={plan}
+          onClose={() => setPlan(null)}
+          onUsePlan={() => applyPlan(true)}
+          onKeepDesign={() => applyPlan(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+const THEME_NAMES: Record<string, string> = {
+  ai: "AI-designed", classic: "Classic", editorial: "Editorial",
+  "saas-card": "SaaS Card", executive: "Executive", academic: "Academic",
+};
+
+function ArchitectModal({
+  plan,
+  onClose,
+  onUsePlan,
+  onKeepDesign,
+}: {
+  plan: ArchitectPlan;
+  onClose: () => void;
+  onUsePlan: () => void;
+  onKeepDesign: () => void;
+}) {
+  const ranked = [...plan.order];
+  const max = Math.max(1, ...ranked.map((s) => plan.importance[s] ?? 0));
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-card shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b border-border p-5">
+          <div className="mb-1 flex items-center gap-2">
+            <span className="flex size-7 items-center justify-center rounded-lg brand-gradient text-white">
+              <Sparkles className="size-4" />
+            </span>
+            <h3 className="text-base font-semibold">PersonaOn’s plan for your page</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{plan.personaType}.</span>{" "}
+            {plan.reasoning}
+          </p>
+        </div>
+
+        <div className="scrollbar-thin flex-1 overflow-y-auto p-5">
+          <div className="mb-4 rounded-xl border border-border bg-secondary/40 p-3 text-sm">
+            <span className="font-medium">Recommended design:</span>{" "}
+            <span className="text-primary">{THEME_NAMES[plan.recommendedTheme] ?? plan.recommendedTheme}</span>
+            {plan.visitorsWant && (
+              <p className="mt-1 text-xs text-muted-foreground">Visitors want: {plan.visitorsWant}</p>
+            )}
+          </div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Content priority &amp; space
+          </p>
+          <div className="space-y-2">
+            {ranked.map((s) => {
+              const v = plan.importance[s] ?? 0;
+              return (
+                <div key={s} className="flex items-center gap-3">
+                  <span className="w-28 shrink-0 text-sm">{s}</span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
+                    <div className="h-full rounded-full brand-gradient" style={{ width: `${(v / max) * 100}%` }} />
+                  </div>
+                  <span className="w-8 shrink-0 text-right text-xs text-muted-foreground">{v}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2 border-t border-border p-4">
+          <button
+            onClick={onKeepDesign}
+            className="inline-flex h-9 items-center rounded-lg border border-border bg-card px-3 text-sm font-medium transition hover:bg-accent"
+          >
+            Keep my design
+          </button>
+          <button
+            onClick={onUsePlan}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+          >
+            <Sparkles className="size-4" /> Use this plan
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

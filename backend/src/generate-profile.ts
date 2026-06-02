@@ -139,7 +139,7 @@ export function generateProfileWithGroqMock(input: GenerateInput): GeneratedProf
     visualStyle: answers.visualStyle,
     theme: answers.theme,
     font: answers.font,
-    avatarUrl: `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(facts.name || "PersonaOn")}&backgroundColor=2563eb,4f46e5,0ea5e9&backgroundType=gradientLinear&textColor=ffffff&fontWeight=600`,
+    avatarUrl: "", // empty → polished monogram; user can upload a real photo
     avatarShape: "circle",
     sections: resolveSections(input),
     hero: {

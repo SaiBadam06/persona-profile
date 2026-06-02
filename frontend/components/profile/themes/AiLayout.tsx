@@ -3,6 +3,7 @@
 import type { CSSProperties } from "react";
 import { PublicChatPreview } from "@/components/profile/PublicChatPreview";
 import { SOCIAL_ICON } from "@/components/icons";
+import { Avatar, isPhoto } from "@/components/profile/Avatar";
 import { initials, type ThemeProps } from "./theme-utils";
 import type { GeneratedProfile, LayoutBlock, LayoutSpec } from "@/lib/types";
 
@@ -51,8 +52,6 @@ export function AiLayout({ profile, facts, device }: ThemeProps) {
   const d = DENSITY[spec.density];
   const radius = RADIUS[spec.radius];
   const mobile = device === "mobile";
-  const avatarRad =
-    profile.avatarShape === "square" ? 18 : profile.avatarShape === "rounded" ? 32 : "9999px";
 
   const root: CSSProperties = {
     background: c.bg,
@@ -81,24 +80,26 @@ export function AiLayout({ profile, facts, device }: ThemeProps) {
   const first = profile.name.split(" ")[0] || "them";
 
   function Section({ heading, children, span }: { heading?: string; children: React.ReactNode; span?: number }) {
+    // Span the 6-col bento (clamped); on mobile the grid is a single column so
+    // spanning would create stray implicit tracks — let it flow naturally.
+    const gridColumn = mobile || !span ? undefined : `span ${Math.min(Math.max(span, 1), 6)}`;
     return (
       <section
         style={{
-          gridColumn: mobile ? "span 1" : `span ${span ?? 6}`,
+          gridColumn,
           background: c.surface,
           border: `1px solid ${c.ink}12`,
           borderRadius: radius,
           padding: mobile ? 16 : 22,
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
           boxShadow: "0 1px 2px rgba(15,23,42,.04), 0 12px 28px -22px rgba(15,23,42,.25)",
+          minWidth: 0,
+          overflowWrap: "anywhere",
         }}
       >
         {heading && (
           <h2 style={{ ...headingStyle, fontSize: mobile ? 17 : 20, marginBottom: 12 }}>{heading}</h2>
         )}
-        <div style={{ flex: 1 }}>{children}</div>
+        {children}
       </section>
     );
   }
@@ -131,13 +132,10 @@ export function AiLayout({ profile, facts, device }: ThemeProps) {
 
     const textCol = (
       <div style={{ textAlign: centered ? "center" : "left", maxWidth: centered ? 720 : undefined, margin: centered ? "0 auto" : undefined }}>
-        {profile.avatarUrl && (v === "centered" || v === "dark-band" || v === "minimal") && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={profile.avatarUrl}
-            alt={profile.name}
-            style={{ width: 132, height: 132, objectFit: "cover", borderRadius: avatarRad, marginBottom: 16, border: `2px solid ${ink}22`, marginLeft: centered ? "auto" : 0, marginRight: centered ? "auto" : 0, display: "block" }}
-          />
+        {(v === "centered" || v === "dark-band" || v === "minimal") && (
+          <div style={{ marginBottom: 16, display: "flex", justifyContent: centered ? "center" : "flex-start" }}>
+            <Avatar name={profile.name} src={profile.avatarUrl} shape={profile.avatarShape} size={128} onDark={dark} />
+          </div>
         )}
         <span style={{ display: "inline-block", fontSize: 12, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: c.accent, marginBottom: 14 }}>
           {profile.hero.eyebrow}
@@ -154,11 +152,11 @@ export function AiLayout({ profile, facts, device }: ThemeProps) {
     );
 
     const statsBlock = stats.length > 0 && (
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${mobile ? 2 : stats.length}, 1fr)`, gap: 12, marginTop: centered ? 34 : 0 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: centered ? 34 : 0 }}>
         {stats.map((s) => (
-          <div key={s.label} style={{ background: dark ? `${c.bg}14` : c.surface, border: `1px solid ${ink}14`, borderRadius: radius, padding: 16 }}>
-            <div style={{ fontFamily: fonts.head, fontSize: 26, fontWeight: 700, color: ink }}>{s.value}</div>
-            <div style={{ fontSize: 11, color: muted, marginTop: 2 }}>{s.label}</div>
+          <div key={s.label} style={{ flex: "1 1 120px", minWidth: 0, background: dark ? `${c.bg}14` : c.surface, border: `1px solid ${ink}14`, borderRadius: radius, padding: 14 }}>
+            <div style={{ fontFamily: fonts.head, fontSize: 24, fontWeight: 700, color: ink, lineHeight: 1.1, overflowWrap: "normal", wordBreak: "keep-all" }}>{s.value}</div>
+            <div style={{ fontSize: 11, color: muted, marginTop: 4, overflowWrap: "anywhere" }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -166,7 +164,7 @@ export function AiLayout({ profile, facts, device }: ThemeProps) {
 
     const portrait = (
       <div style={{ aspectRatio: "4/5", borderRadius: radius, background: `linear-gradient(150deg, ${c.accent}, ${c.ink})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {profile.avatarUrl ? (
+        {isPhoto(profile.avatarUrl) ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={profile.avatarUrl} alt={profile.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: radius }} />
         ) : (
@@ -211,11 +209,11 @@ export function AiLayout({ profile, facts, device }: ThemeProps) {
       case "stats":
         return profile.hero.stats.length ? (
           <Section key={i} heading={b.heading} span={SPAN[b.type]}>
-            <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols(b.columns ?? profile.hero.stats.length)}, 1fr)`, gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
               {profile.hero.stats.map((s) => (
-                <div key={s.label} style={card}>
-                  <div style={{ fontFamily: fonts.head, fontSize: 28, fontWeight: 700, color: c.accent }}>{s.value}</div>
-                  <div style={{ fontSize: 12, color: c.muted, marginTop: 4 }}>{s.label}</div>
+                <div key={s.label} style={{ ...card, minWidth: 0 }}>
+                  <div style={{ fontFamily: fonts.head, fontSize: 28, fontWeight: 700, color: c.accent, lineHeight: 1.1, overflowWrap: "normal", wordBreak: "keep-all" }}>{s.value}</div>
+                  <div style={{ fontSize: 12, color: c.muted, marginTop: 4, overflowWrap: "anywhere" }}>{s.label}</div>
                 </div>
               ))}
             </div>
@@ -324,7 +322,7 @@ export function AiLayout({ profile, facts, device }: ThemeProps) {
                   <div style={{ fontWeight: 600 }}>{profile.booking.label}</div>
                   <div style={{ fontSize: 13, opacity: 0.85 }}>{profile.booking.note}</div>
                 </div>
-                <button style={{ background: c.accentInk, color: c.accent, border: "none", borderRadius: radius, padding: "9px 16px", fontWeight: 600 }}>Book now</button>
+                <a href={profile.contact.email ? `mailto:${profile.contact.email}` : "#"} style={{ background: c.accentInk, color: c.accent, borderRadius: radius, padding: "9px 16px", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>Book now</a>
               </div>
             )}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -344,19 +342,44 @@ export function AiLayout({ profile, facts, device }: ThemeProps) {
     }
   }
 
-  const bentoBlocks = spec.blocks.filter((b) => b.type !== "hero");
+  // Importance (from the Persona Architect) drives ORDER + the featured full-width card.
+  const SECTION_OF: Record<string, string> = {
+    about: "About", experience: "Experience", projects: "Projects", services: "Services",
+    testimonials: "Testimonials", faq: "FAQ", chat: "Chat", contact: "Contact",
+  };
+  const impOf = (b: LayoutBlock) => profile.importance?.[SECTION_OF[b.type] ?? ""] ?? 50;
+
+  // The hero always surfaces the stats, so drop any 'stats' bento block — otherwise
+  // the same numbers render twice (hero + bento), which reads as unfinished.
+  let bentoBlocks = spec.blocks.filter((b) => b.type !== "hero" && b.type !== "stats");
+  let featured: LayoutBlock | null = null;
+  if (profile.importance) {
+    bentoBlocks = [...bentoBlocks].sort((a, b) => impOf(b) - impOf(a));
+    featured = bentoBlocks[0] ?? null;
+    if (featured) bentoBlocks = bentoBlocks.slice(1);
+  }
 
   return (
     <div style={root}>
       <Hero />
+      {featured && (
+        <div style={{ maxWidth: mobile ? undefined : 1100, margin: mobile ? undefined : "0 auto", padding: `${d.gap}px ${sectionPad}px 0` }}>
+          {renderBlock(featured, -1)}
+        </div>
+      )}
       <div
         style={{
           display: "grid",
+          // 6-col bento on desktop; spans (SPAN map) tile pairs into full rows and
+          // `dense` auto-flow backfills gaps left by the importance reorder so short
+          // blocks never sit beside a tall one with empty space below.
           gridTemplateColumns: mobile ? "1fr" : "repeat(6, 1fr)",
-          gridAutoFlow: "dense",
+          gridAutoFlow: mobile ? "row" : "dense",
+          maxWidth: mobile ? undefined : 1100,
+          margin: mobile ? undefined : "0 auto",
           gap: d.gap,
+          alignItems: "start",
           padding: `${d.gap}px ${sectionPad}px ${d.gap + 14}px`,
-          alignItems: "stretch",
         }}
       >
         {bentoBlocks.map((b, i) => renderBlock(b, i))}

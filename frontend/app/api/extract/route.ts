@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { extractText, getDocumentProxy } from "unpdf";
 import { buildExtractSystemPrompt, buildExtractUserPrompt, type ExtractSourceText } from "@/lib/extract-prompt";
 import { activeModel, createWithRetry, extractModel, getLlm, hasLlmKey } from "@/lib/llm";
 import type { ExtractedFacts, ExtractResult, SocialKind, SourceCard } from "@/lib/types";
@@ -10,12 +9,6 @@ export const maxDuration = 60;
 const MAX_TEXT = 8000;
 let seq = 0;
 const id = (p: string) => `${p}-${seq++}`;
-
-async function pdfToText(buf: ArrayBuffer): Promise<string> {
-  const pdf = await getDocumentProxy(new Uint8Array(buf));
-  const { text } = await extractText(pdf, { mergePages: true });
-  return (Array.isArray(text) ? text.join("\n") : text).trim();
-}
 
 function htmlToText(html: string): string {
   return html
@@ -76,54 +69,53 @@ function normalizeFacts(raw: Record<string, unknown>): ExtractedFacts {
   };
 }
 
+/** Accepts JSON: PDF text is extracted in the browser; website is crawled here. */
 export async function POST(req: Request) {
   const notes: string[] = [];
   const sources: SourceCard[] = [];
   const texts: ExtractSourceText[] = [];
 
-  let form: FormData;
+  let body: Record<string, string>;
   try {
-    form = await req.formData();
+    body = (await req.json()) as Record<string, string>;
   } catch {
-    return NextResponse.json({ error: "Expected multipart/form-data" }, { status: 400 });
+    return NextResponse.json({ error: "Expected JSON body" }, { status: 400 });
   }
 
-  const linkedin = form.get("linkedin");
-  const resume = form.get("resume");
-  const websiteUrl = (form.get("website") as string | null)?.trim() ?? "";
-  const manualBio = (form.get("manualBio") as string | null)?.trim() ?? "";
+  const linkedin = (body.linkedin ?? "").trim();
+  const resume = (body.resume ?? "").trim();
+  const website = (body.website ?? "").trim();
+  const manualBio = (body.manualBio ?? "").trim();
+  const linkedinName = body.linkedinName || "LinkedIn.pdf";
+  const resumeName = body.resumeName || "Resume.pdf";
 
-  if (linkedin instanceof File && linkedin.size > 0) {
-    try {
-      const text = await pdfToText(await linkedin.arrayBuffer());
-      if (text.length < 20) throw new Error("empty");
-      texts.push({ label: "LinkedIn profile PDF", text: text.slice(0, MAX_TEXT) });
-      sources.push({ id: "src-linkedin", kind: "linkedin", label: "LinkedIn PDF", value: linkedin.name, status: "complete", detail: `Read ${text.length.toLocaleString()} characters` });
-    } catch {
-      sources.push({ id: "src-linkedin", kind: "linkedin", label: "LinkedIn PDF", value: linkedin.name, status: "failed", detail: "No selectable text (scanned PDF?)" });
+  if (body.linkedinName !== undefined && (body.linkedinName || linkedin)) {
+    if (linkedin.length > 20) {
+      texts.push({ label: "LinkedIn profile PDF", text: linkedin.slice(0, MAX_TEXT) });
+      sources.push({ id: "src-linkedin", kind: "linkedin", label: "LinkedIn PDF", value: linkedinName, status: "complete", detail: `Read ${linkedin.length.toLocaleString()} characters` });
+    } else {
+      sources.push({ id: "src-linkedin", kind: "linkedin", label: "LinkedIn PDF", value: linkedinName, status: "failed", detail: "No selectable text (scanned PDF?)" });
       notes.push("LinkedIn PDF had no readable text.");
     }
   }
-  if (resume instanceof File && resume.size > 0) {
-    try {
-      const text = await pdfToText(await resume.arrayBuffer());
-      if (text.length < 20) throw new Error("empty");
-      texts.push({ label: "Resume / CV PDF", text: text.slice(0, MAX_TEXT) });
-      sources.push({ id: "src-resume", kind: "resume", label: "Resume / CV", value: resume.name, status: "complete", detail: `Read ${text.length.toLocaleString()} characters` });
-    } catch {
-      sources.push({ id: "src-resume", kind: "resume", label: "Resume / CV", value: resume.name, status: "failed", detail: "No selectable text (scanned PDF?)" });
+  if (body.resumeName !== undefined && (body.resumeName || resume)) {
+    if (resume.length > 20) {
+      texts.push({ label: "Resume / CV PDF", text: resume.slice(0, MAX_TEXT) });
+      sources.push({ id: "src-resume", kind: "resume", label: "Resume / CV", value: resumeName, status: "complete", detail: `Read ${resume.length.toLocaleString()} characters` });
+    } else {
+      sources.push({ id: "src-resume", kind: "resume", label: "Resume / CV", value: resumeName, status: "failed", detail: "No selectable text (scanned PDF?)" });
       notes.push("Resume PDF had no readable text.");
     }
   }
-  if (websiteUrl) {
+  if (website) {
     try {
-      const text = await fetchWebsite(websiteUrl);
+      const text = await fetchWebsite(website);
       if (text.length < 40) throw new Error("empty");
-      texts.push({ label: `Website (${websiteUrl})`, text: text.slice(0, MAX_TEXT) });
-      sources.push({ id: "src-website", kind: "website", label: "Website", value: websiteUrl, status: "complete", detail: `Crawled ${text.length.toLocaleString()} characters` });
+      texts.push({ label: `Website (${website})`, text: text.slice(0, MAX_TEXT) });
+      sources.push({ id: "src-website", kind: "website", label: "Website", value: website, status: "complete", detail: `Crawled ${text.length.toLocaleString()} characters` });
     } catch {
-      sources.push({ id: "src-website", kind: "website", label: "Website", value: websiteUrl, status: "failed", detail: "Couldn't fetch (blocked or offline)" });
-      notes.push(`Website ${websiteUrl} couldn't be crawled.`);
+      sources.push({ id: "src-website", kind: "website", label: "Website", value: website, status: "failed", detail: "Couldn't fetch (blocked or offline)" });
+      notes.push(`Website ${website} couldn't be crawled.`);
     }
   }
   if (manualBio) {
@@ -134,8 +126,7 @@ export async function POST(req: Request) {
   if (texts.length === 0 || !hasLlmKey()) {
     notes.push(texts.length === 0 ? "No readable source text — start from a blank profile." : "No LLM API key set — extraction unavailable.");
     const empty: ExtractedFacts = { name: "", headline: "", role: "", location: "", skills: [], workHistory: [], projects: [], achievements: [], services: [], socialLinks: [] };
-    const result: ExtractResult = { facts: empty, sources, source: "mock", model: activeModel(), notes };
-    return NextResponse.json(result);
+    return NextResponse.json({ facts: empty, sources, source: "mock", model: activeModel(), notes });
   }
 
   try {
@@ -157,8 +148,7 @@ export async function POST(req: Request) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[extract] failed:", msg);
-    notes.push(`Extraction failed: ${msg.slice(0, 220)}`);
-    // Return a BLANK profile (not the demo) + the real reason, so you can see what broke and edit your own.
+    notes.push(`Extraction failed: ${msg.slice(0, 200)}`);
     const empty: ExtractedFacts = { name: "", headline: "", role: "", location: "", skills: [], workHistory: [], projects: [], achievements: [], services: [], socialLinks: [] };
     return NextResponse.json({ facts: empty, sources, source: "mock", model: activeModel(), notes });
   }

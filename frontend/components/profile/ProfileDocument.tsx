@@ -10,6 +10,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { SOCIAL_ICON } from "@/components/icons";
+import { Avatar } from "./Avatar";
 import { PublicChatPreview } from "./PublicChatPreview";
 import { cn } from "@/lib/utils";
 import type { ExtractedFacts, GeneratedProfile, PublicSection } from "@/lib/types";
@@ -45,8 +46,6 @@ export function ProfileDocument({
     profile.visualStyle === "modern-gradient" || profile.visualStyle === "editorial";
 
   const first = profile.name.split(" ")[0] || "me";
-  const avatarRadius =
-    profile.avatarShape === "square" ? "1rem" : profile.avatarShape === "rounded" ? "1.75rem" : "9999px";
   const avatarSize = device === "mobile" ? 128 : 184; // ~2 inch
   const docFont =
     profile.font === "serif"
@@ -80,15 +79,15 @@ export function ProfileDocument({
 
   const hero = (
     <header className={cn("px-6 py-10 sm:px-10 sm:py-14", HERO_BG[profile.visualStyle])}>
-      {profile.avatarUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+      <div className="mb-5">
+        <Avatar
+          name={profile.name}
           src={profile.avatarUrl}
-          alt={profile.name}
-          className={cn("mb-5 object-cover ring-2", onDark ? "ring-white/25" : "ring-border")}
-          style={{ width: avatarSize, height: avatarSize, borderRadius: avatarRadius }}
+          shape={profile.avatarShape}
+          size={avatarSize}
+          onDark={onDark}
         />
-      )}
+      </div>
       <span
         className={cn(
           "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",

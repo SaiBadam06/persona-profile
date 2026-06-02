@@ -93,12 +93,11 @@ export function ExtractionPreview({
         setSources(result.sources);
         setNotes(result.notes ?? []);
         setUsedMock(result.source === "mock");
-      } catch {
+      } catch (e) {
         await minDelay;
-        setSources((prev) =>
-          prev.map((s) => ({ ...s, status: "failed", detail: "Extraction failed" }))
-        );
-        setNotes(["Extraction failed — start from a blank profile and add details below."]);
+        const msg = e instanceof Error ? e.message : "network error";
+        setSources((prev) => prev.map((s) => ({ ...s, status: "failed", detail: "Failed" })));
+        setNotes([`Extraction failed (${msg}). Start from a blank profile and add details below, or try again.`]);
       } finally {
         setActiveStep(EXTRACTION_STEPS.length);
         setDone(true);

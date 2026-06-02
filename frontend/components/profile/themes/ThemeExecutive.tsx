@@ -2,6 +2,7 @@
 
 import { PublicChatPreview } from "@/components/profile/PublicChatPreview";
 import { SOCIAL_ICON } from "@/components/icons";
+import { Avatar } from "@/components/profile/Avatar";
 import { fontVars, type ThemeProps } from "./theme-utils";
 
 // D3 — Executive / Dark Hero. Real data from GeneratedProfile + ExtractedFacts.
@@ -17,22 +18,9 @@ export function ThemeExecutive({ profile, facts }: ThemeProps) {
       <div className="d3-hero">
         <div className="d3-hero-inner">
           <div className="d3-top">
-            {profile.avatarUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={profile.avatarUrl}
-                alt={profile.name}
-                style={{
-                  width: 184,
-                  height: 184,
-                  borderRadius:
-                    profile.avatarShape === "square" ? 20 : profile.avatarShape === "rounded" ? 36 : "9999px",
-                  objectFit: "cover",
-                  flexShrink: 0,
-                  border: "3px solid rgba(255,255,255,.18)",
-                }}
-              />
-            )}
+            <div style={{ alignSelf: "center" }}>
+              <Avatar name={profile.name} src={profile.avatarUrl} shape={profile.avatarShape} size={176} onDark />
+            </div>
             <div>
               {profile.hero.eyebrow && (
                 <div className="d3-eyebrow">{profile.hero.eyebrow}</div>
@@ -86,11 +74,11 @@ export function ThemeExecutive({ profile, facts }: ThemeProps) {
         </div>
       </div>
 
-      {/* BODY */}
+      {/* BODY — masonry flow of cards that always fills every column */}
       <div className="d3-body">
-        <div className="d3-main">
+        <div className="po-flow">
           {profile.experience.length > 0 && (
-            <div>
+            <section className="po-block po-card span2">
               <div className="d3-sec-hd">Experience</div>
               <div className="tl">
                 {profile.experience.map((w) => (
@@ -108,30 +96,32 @@ export function ThemeExecutive({ profile, facts }: ThemeProps) {
                   </div>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
           {profile.projects.length > 0 && (
-            <div>
+            <section className={`po-block po-card${profile.projects.length >= 3 ? " span-full" : ""}`}>
               <div className="d3-sec-hd">Projects</div>
-              {profile.projects.map((p) => (
-                <div className="proj" key={p.id}>
-                  <div className="proj-nm">{p.name}</div>
-                  <div className="proj-desc">{p.description}</div>
-                  {p.tags.length > 0 && (
-                    <div className="proj-tags">
-                      {p.tags.map((t) => (
-                        <span key={t} className="tag" style={{ fontSize: 10 }}>{t}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+              <div className={profile.projects.length >= 3 ? "po-cards" : undefined}>
+                {profile.projects.map((p) => (
+                  <div className="proj" key={p.id}>
+                    <div className="proj-nm">{p.name}</div>
+                    <div className="proj-desc">{p.description}</div>
+                    {p.tags.length > 0 && (
+                      <div className="proj-tags">
+                        {p.tags.map((t) => (
+                          <span key={t} className="tag" style={{ fontSize: 10 }}>{t}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
 
           {profile.services.length > 0 && (
-            <div>
+            <section className="po-block po-card">
               <div className="d3-sec-hd">Services</div>
               {profile.services.map((s) => (
                 <div className="proj" key={s.id}>
@@ -139,11 +129,11 @@ export function ThemeExecutive({ profile, facts }: ThemeProps) {
                   <div className="proj-desc">{s.description}</div>
                 </div>
               ))}
-            </div>
+            </section>
           )}
 
           {profile.testimonials.length > 0 && (
-            <div>
+            <section className="po-block po-card">
               <div className="d3-sec-hd">What people say</div>
               {profile.testimonials.map((t) => (
                 <div className="pov" key={t.id}>
@@ -153,11 +143,11 @@ export function ThemeExecutive({ profile, facts }: ThemeProps) {
                   </div>
                 </div>
               ))}
-            </div>
+            </section>
           )}
 
           {profile.faq.length > 0 && (
-            <div>
+            <section className="po-block po-card">
               <div className="d3-sec-hd">FAQ</div>
               {profile.faq.map((f) => (
                 <div className="tl-item" key={f.id} style={{ paddingBottom: 16 }}>
@@ -167,13 +157,11 @@ export function ThemeExecutive({ profile, facts }: ThemeProps) {
                   </div>
                 </div>
               ))}
-            </div>
+            </section>
           )}
-        </div>
 
-        <div className="d3-sidebar">
           {profile.booking.enabled && (
-            <div className="d3-side">
+            <section className="po-block po-card">
               <div className="d3-side-title">Availability</div>
               <div className="avail-row">
                 <span className="avail-dot g" />
@@ -184,28 +172,28 @@ export function ThemeExecutive({ profile, facts }: ThemeProps) {
                   )}
                 </div>
               </div>
-            </div>
+            </section>
           )}
 
           {facts.skills.length > 0 && (
-            <div className="d3-side">
+            <section className="po-block po-card">
               <div className="d3-side-title">Skills</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                 {facts.skills.map((s) => (
                   <span key={s.id} className="tag">{s.label}</span>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
           {profile.sections.includes("Chat") && (
-            <div className="d3-side">
-              <div className="d3-side-title">Ask {first}</div>
+            <section className="po-block chat-tile">
+              <div className="d3-sec-hd">Ask {first}</div>
               <PublicChatPreview profile={profile} facts={facts} />
-            </div>
+            </section>
           )}
 
-          <div className="d3-side">
+          <section className="po-block po-card">
             <div className="d3-side-title">Connect</div>
             {profile.contact.socials.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -240,7 +228,7 @@ export function ThemeExecutive({ profile, facts }: ThemeProps) {
               <span className="po-stamp-text">PersonaOn</span>
               <span className="po-stamp-dot" />
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </div>

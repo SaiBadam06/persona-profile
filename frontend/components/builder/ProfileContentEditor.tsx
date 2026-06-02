@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { Upload } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Avatar } from "@/components/profile/Avatar";
 import { cn } from "@/lib/utils";
 import type { GeneratedProfile } from "@/lib/types";
 
@@ -19,9 +20,6 @@ export function ProfileContentEditor({ profile, onChange }: Props) {
   const set = (patch: Partial<GeneratedProfile>) => onChange({ ...profile, ...patch });
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const previewRadius =
-    profile.avatarShape === "square" ? 10 : profile.avatarShape === "rounded" ? 14 : 9999;
-
   function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -34,13 +32,7 @@ export function ProfileContentEditor({ profile, onChange }: Props) {
     <div className="grid gap-3 sm:grid-cols-2">
       {/* Profile photo */}
       <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-background/60 p-3 sm:col-span-2">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={profile.avatarUrl}
-          alt="avatar"
-          className="size-16 object-cover ring-1 ring-border"
-          style={{ borderRadius: previewRadius }}
-        />
+        <Avatar name={profile.name} src={profile.avatarUrl} shape={profile.avatarShape} size={64} />
         <div className="flex flex-col gap-2">
           <div>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickPhoto} />

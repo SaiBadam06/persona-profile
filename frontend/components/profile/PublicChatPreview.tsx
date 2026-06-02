@@ -10,12 +10,15 @@ import {
   FileText,
   Globe,
   Mail,
-  MessageSquare,
   ShieldCheck,
   Sparkles,
+  Wand2,
 } from "lucide-react";
+import { Avatar } from "@/components/profile/Avatar";
 import { answerQuestion } from "@/lib/chat-sim";
 import { API_BASE } from "@/lib/config";
+import { sendPersonaChat } from "@/lib/persona-chat-client";
+import { useChatStore, useProfileEdit } from "@/lib/profile-edit-context";
 import { cn } from "@/lib/utils";
 import type {
   ChatMessage,
@@ -40,14 +43,17 @@ const SOURCE_BADGE_ICON = {
 let mid = 0;
 const newMsg = () => `m-${mid++}`;
 
+// Shown on the published page to hint that the chat can also restyle the page.
+const EDIT_EXAMPLES = ["Make it dark & bold", "Lead with projects"];
+
 export function PublicChatPreview({ profile, facts, className }: Props) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: newMsg(), role: "assistant", text: profile.chat.greeting },
-  ]);
+  const { editable, onProfileChange, chat: liftedChat } = useProfileEdit();
+  // Use the page-level chat store when present (so the conversation survives a
+  // theme swap); otherwise keep state local (builder preview / demos).
+  const localChat = useChatStore(profile.chat.greeting);
+  const { messages, setMessages, thinking, setThinking, leadDone, setLeadDone, answered, setAnswered } =
+    liftedChat ?? localChat;
   const [input, setInput] = useState("");
-  const [thinking, setThinking] = useState(false);
-  const [leadDone, setLeadDone] = useState(false);
-  const [answered, setAnswered] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -57,36 +63,60 @@ export function PublicChatPreview({ profile, facts, className }: Props) {
     });
   }, [messages, thinking]);
 
+  const addAssistant = (msg: Omit<ChatMessage, "id" | "role">) =>
+    setMessages((m) => [...m, { id: newMsg(), role: "assistant", ...msg }]);
+
+  // Offer lead capture once, after the first answer, when enabled.
+  const leadOffer = () => {
+    const next = answered + 1;
+    setAnswered(next);
+    return profile.chat.collectLeads && !leadDone && next >= 1;
+  };
+
   async function ask(question: string) {
     if (!question.trim() || thinking) return;
     setInput("");
     setMessages((m) => [...m, { id: newMsg(), role: "user", text: question }]);
     setThinking(true);
 
-    // Real AI answer grounded in the profile; fall back to the local sim.
-    let reply: { text: string; sources?: ChatSource[] } | null = null;
-    try {
-      const res = await fetch(`${API_BASE}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, facts, question }),
-      });
-      const data = await res.json();
-      if (res.ok && data.source === "groq" && data.text) {
-        reply = { text: data.text, sources: data.sources ?? [] };
+    // On the published page the chat can also EDIT the page (or decline
+    // off-topic asks). One call returns answer | edit | refuse.
+    if (editable) {
+      const result = await sendPersonaChat(profile, facts, question);
+      if (result) {
+        if (result.intent === "edit" && result.updatedProfile) {
+          onProfileChange(result.updatedProfile);
+          addAssistant({ text: result.reply, edited: true });
+        } else if (result.intent === "refuse") {
+          addAssistant({ text: result.reply });
+        } else {
+          addAssistant({ text: result.reply, sources: result.sources, offerLeadCapture: leadOffer() });
+        }
+        setThinking(false);
+        return;
       }
-    } catch {
-      /* offline / no key — use local fallback */
+      // null → no key / model failure: fall through to the local sim.
+    } else {
+      // Read-only preview (e.g. builder): grounded Q&A only.
+      try {
+        const res = await fetch(`${API_BASE}/api/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ profile, facts, question }),
+        });
+        const data = await res.json();
+        if (res.ok && data.source === "groq" && data.text) {
+          addAssistant({ text: data.text, sources: data.sources ?? [], offerLeadCapture: leadOffer() });
+          setThinking(false);
+          return;
+        }
+      } catch {
+        /* offline / no key — use local fallback */
+      }
     }
-    if (!reply) reply = answerQuestion(question, facts, profile);
 
-    const nextAnswered = answered + 1;
-    const offerLead = profile.chat.collectLeads && !leadDone && nextAnswered >= 1;
-    setAnswered(nextAnswered);
-    setMessages((m) => [
-      ...m,
-      { id: newMsg(), role: "assistant", text: reply.text, sources: reply.sources, offerLeadCapture: offerLead },
-    ]);
+    const fallback = answerQuestion(question, facts, profile);
+    addAssistant({ text: fallback.text, sources: fallback.sources, offerLeadCapture: leadOffer() });
     setThinking(false);
   }
 
@@ -99,27 +129,17 @@ export function PublicChatPreview({ profile, facts, className }: Props) {
     >
       {/* Header */}
       <div className="flex items-center gap-2.5 border-b border-border px-4 py-3">
-        {profile.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={profile.avatarUrl}
-            alt={profile.name}
-            className="size-9 shrink-0 object-cover ring-1 ring-border"
-            style={{
-              borderRadius:
-                profile.avatarShape === "square" ? 10 : profile.avatarShape === "rounded" ? 13 : 9999,
-            }}
-          />
-        ) : (
-          <span className="flex size-9 items-center justify-center rounded-full brand-gradient text-white">
-            <MessageSquare className="size-4" />
-          </span>
-        )}
+        <Avatar name={profile.name} src={profile.avatarUrl} shape={profile.avatarShape} size={38} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">
             Chat with {profile.name.split(" ")[0]}
           </p>
-          {profile.chat.verifiedOnly ? (
+          {editable ? (
+            <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Wand2 className="size-3 text-primary" /> Ask anything — or tell me to
+              restyle this page
+            </p>
+          ) : profile.chat.verifiedOnly ? (
             <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
               <ShieldCheck className="size-3 text-primary" /> Answers from verified
               sources
@@ -141,7 +161,7 @@ export function PublicChatPreview({ profile, facts, className }: Props) {
       <div
         ref={scrollRef}
         className="scrollbar-thin flex-1 space-y-3 overflow-y-auto px-4 py-4"
-        style={{ minHeight: 280, maxHeight: 420 }}
+        style={{ minHeight: 360, maxHeight: 520 }}
       >
         {messages.map((m) => (
           <div key={m.id}>
@@ -167,6 +187,11 @@ export function PublicChatPreview({ profile, facts, className }: Props) {
                 {m.sources.map((s) => (
                   <SourceBadge key={s.kind} source={s} />
                 ))}
+              </div>
+            )}
+            {m.edited && (
+              <div className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-primary/30 bg-accent/60 px-2 py-0.5 text-[10px] font-medium text-primary">
+                <Sparkles className="size-2.5" /> Updated your page
               </div>
             )}
             {m.offerLeadCapture && !leadDone && (
@@ -197,10 +222,10 @@ export function PublicChatPreview({ profile, facts, className }: Props) {
         )}
       </div>
 
-      {/* Suggested questions */}
+      {/* Suggested questions (+ example edits when the page is editable) */}
       {messages.length <= 2 && (
         <div className="flex flex-wrap gap-1.5 border-t border-border px-4 py-2.5">
-          {profile.suggestedQuestions.slice(0, 4).map((q) => (
+          {profile.suggestedQuestions.slice(0, editable ? 3 : 4).map((q) => (
             <button
               key={q}
               onClick={() => ask(q)}
@@ -209,6 +234,16 @@ export function PublicChatPreview({ profile, facts, className }: Props) {
               {q}
             </button>
           ))}
+          {editable &&
+            EDIT_EXAMPLES.map((q) => (
+              <button
+                key={q}
+                onClick={() => ask(q)}
+                className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-accent/50 px-2.5 py-1 text-xs text-primary transition hover:bg-accent"
+              >
+                <Wand2 className="size-3" /> {q}
+              </button>
+            ))}
         </div>
       )}
 
@@ -223,7 +258,11 @@ export function PublicChatPreview({ profile, facts, className }: Props) {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={`Ask about ${profile.name.split(" ")[0]}'s work…`}
+          placeholder={
+            editable
+              ? `Ask about ${profile.name.split(" ")[0]}, or describe a change…`
+              : `Ask about ${profile.name.split(" ")[0]}'s work…`
+          }
           className="h-9 flex-1 rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40"
         />
         <button

@@ -2,6 +2,7 @@
 
 import { PublicChatPreview } from "@/components/profile/PublicChatPreview";
 import { SOCIAL_ICON } from "@/components/icons";
+import { isPhoto } from "@/components/profile/Avatar";
 import { fontVars, initials, type ThemeProps } from "./theme-utils";
 
 // D4 — Academic / Research. Real data from GeneratedProfile + ExtractedFacts.
@@ -33,7 +34,7 @@ export function ThemeAcademic({ profile, facts }: ThemeProps) {
       <section className="d4-hero" id="about">
         <div>
           <div className="d4-portrait-sq">
-            {profile.avatarUrl ? (
+            {isPhoto(profile.avatarUrl) ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={profile.avatarUrl} alt={profile.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
@@ -91,11 +92,11 @@ export function ThemeAcademic({ profile, facts }: ThemeProps) {
         </div>
       </section>
 
-      {/* MAIN + SIDEBAR */}
+      {/* MAIN — masonry flow that always fills every column */}
       <div className="d4-main">
-        <main>
+        <div className="po-flow">
           {profile.experience.length > 0 && (
-            <section className="d4-sec" id="work">
+            <section className="d4-sec po-block span2" id="work">
               <div className="d4-sec-hd">Experience</div>
               {profile.experience.map((w) => (
                 <div className="paper" key={w.id}>
@@ -108,26 +109,28 @@ export function ThemeAcademic({ profile, facts }: ThemeProps) {
           )}
 
           {profile.projects.length > 0 && (
-            <section className="d4-sec">
+            <section className={`d4-sec po-block${profile.projects.length >= 3 ? " span-full" : ""}`}>
               <div className="d4-sec-hd">Projects</div>
-              {profile.projects.map((p) => (
-                <div className="paper" key={p.id}>
-                  <div className="paper-title">{p.name}</div>
-                  <p className="paper-abs">{p.description}</p>
-                  {p.tags.length > 0 && (
-                    <div className="paper-links">
-                      {p.tags.map((t) => (
-                        <span key={t} className="paper-link">{t}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+              <div className={profile.projects.length >= 3 ? "po-cards" : undefined}>
+                {profile.projects.map((p) => (
+                  <div className="paper" key={p.id}>
+                    <div className="paper-title">{p.name}</div>
+                    <p className="paper-abs">{p.description}</p>
+                    {p.tags.length > 0 && (
+                      <div className="paper-links">
+                        {p.tags.map((t) => (
+                          <span key={t} className="paper-link">{t}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </section>
           )}
 
           {profile.services.length > 0 && (
-            <section className="d4-sec">
+            <section className="d4-sec po-block">
               <div className="d4-sec-hd">Services</div>
               {profile.services.map((s) => (
                 <div className="paper" key={s.id}>
@@ -138,46 +141,46 @@ export function ThemeAcademic({ profile, facts }: ThemeProps) {
             </section>
           )}
 
-          {profile.sections.includes("Chat") && (
-            <section className="d4-sec" id="ask">
-              <div className="d4-sec-hd">Ask {first}</div>
-              <PublicChatPreview profile={profile} facts={facts} />
-            </section>
-          )}
-        </main>
-
-        <aside className="d4-sidebar">
           {stats.length > 0 && (
-            <div>
-              <div className="d4-sb-hd">At a glance</div>
+            <section className="d4-sec po-block">
+              <div className="d4-sec-hd">At a glance</div>
               {stats.map((s) => (
                 <div className="d4-stat-item" key={s.label}>
                   <span className="d4-stat-n">{s.value}</span>
                   <span className="d4-stat-l">{s.label}</span>
                 </div>
               ))}
-            </div>
+            </section>
           )}
 
           {facts.skills.length > 0 && (
-            <div>
-              <div className="d4-sb-hd">Skills</div>
+            <section className="d4-sec po-block">
+              <div className="d4-sec-hd">Skills</div>
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                 {facts.skills.map((s) => (
                   <span key={s.id} className="tag">{s.label}</span>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
-          <div className="po-footer">
-            <div className="po-stamp">
-              <span className="po-stamp-text">PersonaOn</span>
-              <span className="po-stamp-dot" />
+          {profile.sections.includes("Chat") && (
+            <section className="d4-sec po-block chat-tile" id="ask">
+              <div className="d4-sec-hd">Ask {first}</div>
+              <PublicChatPreview profile={profile} facts={facts} />
+            </section>
+          )}
+
+          <section className="po-block">
+            <div className="po-footer">
+              <div className="po-stamp">
+                <span className="po-stamp-text">PersonaOn</span>
+                <span className="po-stamp-dot" />
+              </div>
+              <p>Real voice. Real knowledge. Answers sourced only from content {first} has connected.</p>
             </div>
-            <p>Real voice. Real knowledge. Answers sourced only from content {first} has connected.</p>
-          </div>
-        </aside>
+          </section>
+        </div>
       </div>
     </div>
   );

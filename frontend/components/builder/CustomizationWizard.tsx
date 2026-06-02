@@ -78,7 +78,7 @@ const THEMES: {
   {
     value: "editorial",
     label: "Editorial",
-    desc: "Broadsheet, serif headline, 3-column",
+    desc: "Broadsheet, serif headline — fills as a balanced newspaper grid",
     preview: (
       <span style={{ display: "block", background: "#fff", height: "100%", padding: 6 }}>
         <span style={{ display: "block", fontFamily: "'Playfair Display',serif", fontSize: 13, color: "#0f0f0e", lineHeight: 1 }}>Aa</span>
@@ -93,7 +93,7 @@ const THEMES: {
   {
     value: "saas-card",
     label: "SaaS Card",
-    desc: "Profile card, cover, stats",
+    desc: "Profile card, cover, stats — cards reflow to fill",
     preview: (
       <span style={{ display: "block", background: "#f4f2ef", height: "100%", padding: 6 }}>
         <span style={{ display: "block", height: 10, background: "#0f0f0e", borderRadius: 3 }} />
@@ -107,7 +107,7 @@ const THEMES: {
   {
     value: "executive",
     label: "Executive",
-    desc: "Dark hero, big stats, timeline",
+    desc: "Dark hero, big stats — cards reflow to fill",
     preview: (
       <span style={{ display: "block", background: "#f9f8f6", height: "100%" }}>
         <span style={{ display: "block", height: 22, background: "#0f0f0e", padding: 5 }}>
@@ -123,7 +123,7 @@ const THEMES: {
   {
     value: "academic",
     label: "Academic",
-    desc: "Research CV, serif, publications",
+    desc: "Research CV, serif — sections reflow to fill",
     preview: (
       <span style={{ display: "block", background: "#fff", height: "100%", padding: 6, borderTop: "2px solid #0f0f0e" }}>
         <span style={{ display: "block", fontFamily: "'Playfair Display',serif", fontSize: 11, color: "#0f0f0e", lineHeight: 1 }}>Aa.</span>
@@ -135,8 +135,8 @@ const THEMES: {
   },
   {
     value: "classic",
-    label: "Classic",
-    desc: "PersonaOn blue/white, single or multi",
+    label: "Standard",
+    desc: "Clean, full-width — adapts to your content (recommended)",
     preview: (
       <span style={{ display: "block", height: "100%", background: "linear-gradient(135deg,#2563eb,#0ea5e9)", padding: 6 }}>
         <span style={{ display: "block", width: "60%", height: 6, background: "#ffffffcc", borderRadius: 2 }} />
@@ -297,7 +297,7 @@ export function CustomizationWizard({ answers, onChange, onBack, onGenerate }: P
         </div>
       </section>
 
-      <QCard n={1} title="Single page or multi-page? (Classic design only)">
+      <QCard n={1} title="Single page or multi-page?">
         <div className="grid gap-3 sm:grid-cols-2">
           {LAYOUTS.map((l) => (
             <BigOption

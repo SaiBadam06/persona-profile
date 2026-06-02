@@ -1,17 +1,44 @@
 import { API_BASE } from "./config";
 import type { ExtractResult, IntakeFiles } from "./types";
 
-// Client entry point for real source extraction. Sends the uploaded PDFs +
-// website URL + bio to /api/extract as multipart form data.
+// Parse PDF text in the BROWSER (avoids Vercel's upload size limit + serverless
+// PDF issues), then send small JSON text to /api/extract. Website is crawled server-side.
+
+async function pdfToText(file: File): Promise<string> {
+  try {
+    const { extractText, getDocumentProxy } = await import("unpdf");
+    const buf = new Uint8Array(await file.arrayBuffer());
+    const pdf = await getDocumentProxy(buf);
+    const { text } = await extractText(pdf, { mergePages: true });
+    return (Array.isArray(text) ? text.join("\n") : text).trim();
+  } catch {
+    return ""; // unreadable / scanned → server marks the source failed
+  }
+}
 
 export async function extractFacts(intake: IntakeFiles): Promise<ExtractResult> {
-  const fd = new FormData();
-  if (intake.linkedinFile) fd.append("linkedin", intake.linkedinFile);
-  if (intake.resumeFile) fd.append("resume", intake.resumeFile);
-  if (intake.websiteUrl.trim()) fd.append("website", intake.websiteUrl.trim());
-  if (intake.manualBio.trim()) fd.append("manualBio", intake.manualBio.trim());
+  const [linkedin, resume] = await Promise.all([
+    intake.linkedinFile ? pdfToText(intake.linkedinFile) : Promise.resolve(""),
+    intake.resumeFile ? pdfToText(intake.resumeFile) : Promise.resolve(""),
+  ]);
 
-  const res = await fetch(`${API_BASE}/api/extract`, { method: "POST", body: fd });
-  if (!res.ok) throw new Error(`Extract route responded ${res.status}`);
+  const body = {
+    linkedin,
+    linkedinName: intake.linkedinFile ? intake.linkedinFile.name : undefined,
+    resume,
+    resumeName: intake.resumeFile ? intake.resumeFile.name : undefined,
+    website: intake.websiteUrl.trim(),
+    manualBio: intake.manualBio.trim(),
+  };
+
+  const res = await fetch(`${API_BASE}/api/extract`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`Extract route ${res.status}: ${detail.slice(0, 150)}`);
+  }
   return (await res.json()) as ExtractResult;
 }

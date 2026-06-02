@@ -5,6 +5,9 @@ export interface ThemeProps {
   profile: GeneratedProfile;
   facts: ExtractedFacts;
   device?: "desktop" | "mobile";
+  /** True when rendered inside the multi-page wrapper (which already shows the
+   *  page tabs) — themes hide their own top nav to avoid a duplicate nav bar. */
+  embedded?: boolean;
 }
 
 export function initials(name: string): string {
