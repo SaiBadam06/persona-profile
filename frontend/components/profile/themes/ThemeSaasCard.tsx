@@ -13,6 +13,17 @@ export function ThemeSaasCard({ profile, facts, embedded }: ThemeProps) {
   const stats = profile.hero.stats.slice(0, 4);
   const bookingHref = profile.contact.email ? `mailto:${profile.contact.email}` : "#";
 
+  // On the multi-page "Ask" view the profile is scoped to chat only. There we
+  // drop the Skills tile (not relevant on the chat page) so the chat box leads
+  // and only Connect follows beneath it.
+  const chatFocused =
+    profile.sections.includes("Chat") &&
+    profile.experience.length === 0 &&
+    profile.projects.length === 0 &&
+    profile.services.length === 0 &&
+    profile.testimonials.length === 0 &&
+    profile.faq.length === 0;
+
   return (
     <div className="po-theme d2" style={fontVars(profile.font)}>
       {!embedded && (
@@ -164,7 +175,7 @@ export function ThemeSaasCard({ profile, facts, embedded }: ThemeProps) {
             </div>
           )}
 
-          {facts.skills.length > 0 && (
+          {!chatFocused && facts.skills.length > 0 && (
             <div className="d2-sec po-block">
               <div className="d2-sec-hd">
                 <span className="d2-sec-title">Skills</span>
