@@ -180,7 +180,7 @@
 
 /* ════ D2 — SAAS PROFILE CARD ════ */
 .d2 { background:var(--paper); font-family:var(--sans); }
-.d2-wrap { max-width:1040px; margin:0 auto; padding:var(--s7) var(--s8); }
+.d2-wrap { max-width:1320px; margin:0 auto; padding:var(--s7) var(--s8); }
 .d2-card { background:var(--white); border:1px solid var(--ink-08); border-radius:var(--r-xl); overflow:hidden; margin-bottom:var(--s5); }
 .d2-cover { height:96px; background:linear-gradient(120deg, var(--blue) 0%, #1c3a5e 48%, var(--ink) 100%); position:relative; overflow:hidden; }
 .d2-cover::after { content:''; position:absolute; inset:0; background-image: repeating-linear-gradient(0deg,transparent,transparent 23px,rgba(255,255,255,.04) 23px,rgba(255,255,255,.04) 24px), repeating-linear-gradient(90deg,transparent,transparent 23px,rgba(255,255,255,.04) 23px,rgba(255,255,255,.04) 24px); }
